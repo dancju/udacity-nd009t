@@ -2,14 +2,13 @@ import argparse
 import json
 import os
 import pickle
-import sys
-import sagemaker_containers
 import pandas as pd
 import torch
 import torch.optim as optim
 import torch.utils.data
 
 from model import LSTMClassifier
+
 
 def model_fn(model_dir):
     """Load the PyTorch model from the `model_dir` directory."""
@@ -25,7 +24,11 @@ def model_fn(model_dir):
 
     # Determine the device and construct the model.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = LSTMClassifier(model_info['embedding_dim'], model_info['hidden_dim'], model_info['vocab_size'])
+    model = LSTMClassifier(
+        model_info['embedding_dim'],
+        model_info['hidden_dim'],
+        model_info['vocab_size']
+    )
 
     # Load the stored model parameters.
     model_path = os.path.join(model_dir, 'model.pth')
@@ -42,10 +45,15 @@ def model_fn(model_dir):
     print("Done loading model.")
     return model
 
+
 def _get_train_data_loader(batch_size, training_dir):
     print("Get train data loader.")
 
-    train_data = pd.read_csv(os.path.join(training_dir, "train.csv"), header=None, names=None)
+    train_data = pd.read_csv(
+        os.path.join(training_dir, "train.csv"),
+        header=None,
+        names=None,
+    )
 
     train_y = torch.from_numpy(train_data[[0]].values).float().squeeze()
     train_X = torch.from_numpy(train_data.drop([0], axis=1).values).long()
@@ -66,7 +74,7 @@ def train(model, train_loader, epochs, optimizer, loss_fn, device):
     loss_fn      - The loss function used for training.
     device       - Where the model and data should be loaded (gpu or cpu).
     """
-    
+
     # TODO: Paste the train() method developed in the notebook here.
 
     for epoch in range(1, epochs + 1):
@@ -153,12 +161,12 @@ if __name__ == '__main__':
         }
         torch.save(model_info, f)
 
-	# Save the word_dict
+    # Save the word_dict
     word_dict_path = os.path.join(args.model_dir, 'word_dict.pkl')
     with open(word_dict_path, 'wb') as f:
         pickle.dump(model.word_dict, f)
 
-	# Save the model parameters
+    # Save the model parameters
     model_path = os.path.join(args.model_dir, 'model.pth')
     with open(model_path, 'wb') as f:
         torch.save(model.cpu().state_dict(), f)

@@ -28,7 +28,7 @@ def _load_data(input_dir: str, model_dir: str, seq_len: int, dataset: str):
             p_ = model(
                 torch.tensor(
                     x.to_numpy()[i : i + batch_size_ * seq_len], dtype=torch.float,
-                ).view(batch_size_, seq_len, model.input_dim)
+                ).view(batch_size_, seq_len * x.shape[1])
             )
             p0.append(p_.squeeze().numpy())
         p1 = pd.DataFrame(p0).transpose().to_numpy()

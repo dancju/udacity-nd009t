@@ -7,10 +7,7 @@ import torch
 import torch.nn
 import torch.optim
 
-try:
-    from .model import Model
-except ImportError:
-    from model import Model
+from .models import LinearModel, LSTMModel
 
 
 def train(
@@ -18,10 +15,11 @@ def train(
     output_dir: str,
     model_dir: str,
     checkpoint_path: str,
-    hidden_dim: int,
-    n_epochs: int,
-    seq_len: int,
-    batch_size: int,
+    model_class: str,
+    seq_len: int = 128,
+    hidden_dim: int = 64,
+    n_epochs: int = 16,
+    batch_size: int = 1024,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
@@ -43,11 +41,17 @@ def train(
     y_vali = read_csv("y_vali.csv")
 
     parameters = {
-        "input_dim": x_trai.shape[1],
+        "seq_len": seq_len,
+        "n_features": x_trai.shape[1],
         "hidden_dim": hidden_dim,
         "output_dim": 1,
     }
-    model = Model(**parameters)
+    if model_class == "lstm":
+        model = LSTMModel(**parameters)
+    elif model_class == "linear":
+        model = LinearModel(**parameters)
+    else:
+        raise Exception()
     loss_fn = torch.nn.MSELoss(reduction="sum")
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.1)
@@ -72,11 +76,7 @@ def train(
                 optimizer.zero_grad()
                 batch_size_ = min(batch_size, (len(x_trai) - j) // seq_len)
                 loss = loss_fn(
-                    model(
-                        x_trai[j : j + seq_len * batch_size_].view(
-                            batch_size_, seq_len, parameters["input_dim"]
-                        )
-                    ),
+                    model(x_trai[j : j + seq_len * batch_size_]),
                     y_trai[j + seq_len - 1 : j + seq_len * batch_size_ : seq_len],
                 )
                 loss.backward()
@@ -90,11 +90,7 @@ def train(
                 for j in range(i, len(x_vali) - seq_len + 1, seq_len * batch_size):
                     batch_size_ = min(batch_size, (len(x_vali) - j) // seq_len)
                     loss = loss_fn(
-                        model(
-                            x_vali[j : j + seq_len * batch_size_].view(
-                                batch_size_, seq_len, parameters["input_dim"]
-                            )
-                        ),
+                        model(x_vali[j : j + seq_len * batch_size_]),
                         y_vali[j + seq_len - 1 : j + seq_len * batch_size_ : seq_len],
                     )
                     valid_loss += loss.item()
@@ -120,8 +116,10 @@ def train(
         },
         os.path.join(output_dir, "checkpoint.pth"),
     )
-    torch.save(parameters, os.path.join(model_dir, "model_info.pth"))
-    torch.save(model.cpu().state_dict(), os.path.join(model_dir, "model.pth"))
+    torch.save(
+        {"parameters": parameters, "state_dict": model.cpu().state_dict()},
+        os.path.join(model_dir, model_class + ".pth"),
+    )
 
 
 if __name__ == "__main__":
@@ -148,8 +146,9 @@ if __name__ == "__main__":
         output_dir=args.output_data_dir,
         model_dir=args.model_dir,
         checkpoint_path=args.checkpoint_path,
+        model_class="lstm",
+        seq_len=args.seq_len,
         hidden_dim=args.hidden_dim,
         n_epochs=args.n_epochs,
-        seq_len=args.seq_len,
         batch_size=args.batch_size,
     )

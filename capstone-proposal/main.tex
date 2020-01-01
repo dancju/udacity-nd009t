@@ -21,7 +21,7 @@ There are many studies regarding algorithmic trading in financial markets based 
 \section{Problem Statement}
 
 \paragraph{}
-Given a time-series data of Bitcoin price with each time step indicating one minute, the goal is to build a price predictor of the price of the next minute.
+Given a time-series data of Bitcoin price with each time step indicating one minute, the goal is to build a price predictor for the price of the next minute.
 
 \section{Datasets and Inputs}
 
@@ -59,7 +59,13 @@ A linear regression model will be used as the benchmark to compare against the L
 \section{Evaluation Metrics}
 
 \paragraph{}
-The mean squared error (MSE) between labels $y$ and predictions $\hat y$ will be used to evaluate the performance of both of the benchmark model and the solution model. For a given $N$ and a time-series test dataset, all consecutive sub-sequence of the time-series with length $N$ will be used and equally contribute to the final MSE.
+The mean squared error (MSE) between labels $y$ and predictions $\hat y$ will be used to evaluate the performance of both of the benchmark model and the solution model. MSE is defined as follows:
+
+\begin{equation*}
+\mathrm{MSE}(x,y)=\mathrm{mean}\left(l_1,\dots,l_N\right), \quad l_n=\left(x_n-y_n\right)^2.
+\end{equation*}
+
+For a given $N$ and a time-series test dataset, all consecutive sub-sequence of the time-series with length $N$ will be used and equally contribute to the final MSE.
 
 \section{Project Design}
 

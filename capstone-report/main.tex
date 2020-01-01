@@ -1,8 +1,7 @@
 \documentclass[12pt, letterpaper]{article}
 
 \usepackage{amsmath}
-\usepackage{babel}
-\usepackage[margin=1in]{geometry}
+\usepackage[british]{babel}
 \usepackage{hyperref}
 \usepackage{microtype}
 
@@ -14,41 +13,50 @@
 
 \maketitle
 
+\section{Definition} % (approx. 1-2 pages)
+
+\subsection{Project Overview}
+
+\paragraph{}
+The stock market prediction has been identified as a significant practical problem in the economic field. Trading algorithms rather than humans performed over 80\% of trading in the stock market and the FOREX market. In the crypto-currency market, algorithmic trading is also a hot topic among investors. However, timely and accurate prediction of the market is generally regarded as one of the most challenging problems, since the environment is profoundly affected by volatile political-economic factors, such as legislative acts, political unrest, and mass irrational panic.
+
+\paragraph{}
+There are many studies regarding algorithmic trading in financial markets based on machine learning, where recurrent neural network (RNN) and reinforcement learning (RL) are being popular in recent years. In this study, a Bitcoin price predictor based on long short-term memory (LSTM, a variant of RNN) is presented.
+
+\subsection{Problem Statement}
+
+\paragraph{}
+Given a time-series data of Bitcoin price with each time step indicating one minute, the goal is to build a price predictor for the price of the next minute.
+
+\paragraph{}
+In this study, data of the BitMEX's XBTZ19 contract, which is a Bitcoin futures contract expiring in December 2019, is used to train and test the predictor. The dataset is a table that each row indicates one minute and each column indicates a specific data such as open-high-low-close prices, volume, and volume-weighted average price (VWAP). The dataset is formulated as $\{x_t|t=1,2,\dots,T\}$, where $x_t$ is a vector of the data in minute $t$, such that
+
+\begin{equation*}
+    x_t := \begin{bmatrix}
+        \text{open price of time }t \\
+        \text{high price of time }t \\
+        \text{low price of time }t \\
+        \text{close price of time }t \\
+        \text{volume of time }t \\
+        \text{VWAP of time }t \\
+        \vdots
+    \end{bmatrix}.
+\end{equation*}
+
+\paragraph{}
+Given data of the time range with length of $N$ and end at time step $t$, viz $\{x_{i-N+1},\dots,x_i\}$, the predictor estimates the VWAP of the next time step $y_i=v_{i+1}$, where $v_{i+1}$ is an item of vector $x_{i+1}$. The predictor can be seen as a function $\hat y_i=f(x_{i-N+1}\dots x_i)$ mapping from the history trading data to the next VWAP.
+
+\paragraph{}
+Two predictors, an LSTM model as solution and a linear model as benchmark will be built and compared with the metrics as discussed as follows.
+
+\subsection{Metrics}
+
+\paragraph{}
+The mean squared error (MSE) between labels $y$ and predictions $\hat y$ will be used to evaluate the performance of both of the benchmark model and the solution model. For a given $N$ and a time-series test dataset, all consecutive sub-sequence of the time-series with length $N$ will be used and equally contribute to the final MSE.
+
+\section{Analysis} % _(approx. 2-4 pages)_
+
 \end{document}
-
-## I. Definition
-
-_(approx. 1-2 pages)_
-
-### Project Overview
-
-In this section, look to provide a high-level overview of the project in layman’s terms. Questions to ask yourself when writing this section:
-
-- _Has an overview of the project been provided, such as the problem domain, project origin, and related datasets or input data?_
-- _Has enough background information been given so that an uninformed reader would understand the problem domain and following problem statement?_
-
-Stock prices are formed based on short and/or long-term commercial and trading activities that reflect different frequencies of trading patterns. However, these patterns are often elusive as they are affected by many uncertain politicaleconomic factors in the real world, such as corporate performances, government policies, and even breaking news circulated across markets. Moreover, time series of stock prices are non-stationary and non-linear, making the prediction of future price trends much challenging. To address them, we propose a novel State Frequency Memory (SFM) recurrent network to capture the multi-frequency trading patterns from past market data to make long and short term predictions over time.
-
-Inspired by Discrete Fourier Transform (DFT), the SFM decomposes the hidden states of memory cells into multiple frequency components, each of which models a particular frequency of latent trading pattern underlying the fluctuation of stock price. Then the future stock prices are predicted as a nonlinear mapping of the combination of these components in an Inverse Fourier Transform (IFT) fashion. Modeling multi-frequency trading patterns can enable more accurate predictions for various time ranges: while a shortterm prediction usually depends on high frequency trading patterns, a long-term prediction should focus more on the low frequency trading patterns targeting at long-term return. Unfortunately, no existing model explicitly distinguishes between various frequencies of trading patterns to make dynamic predictions in literature. The experiments on the real market data also demonstrate more competitive performance by the SFM as compared with the state-of-the-art methods.
-
-### Problem Statement
-
-In this section, you will want to clearly define the problem that you are trying to solve, including the strategy (outline of tasks) you will use to achieve the desired solution. You should also thoroughly discuss what the intended solution will be for this problem. Questions to ask yourself when writing this section:
-
-- _Is the problem statement clearly defined? Will the reader understand what you are expecting to solve?_
-- _Have you thoroughly discussed how you will attempt to solve the problem?_
-- _Is an anticipated solution clearly defined? Will the reader understand what results you are looking for?_
-
-### Metrics
-
-In this section, you will need to clearly define the metrics or calculations you will use to measure performance of a model or result in your project. These calculations and metrics should be justified based on the characteristics of the problem and problem domain. Questions to ask yourself when writing this section:
-
-- _Are the metrics you’ve chosen to measure the performance of your models clearly discussed and defined?_
-- _Have you provided reasonable justification for the metrics chosen based on the problem and solution?_
-
-## II. Analysis
-
-_(approx. 2-4 pages)_
 
 ### Data Exploration
 

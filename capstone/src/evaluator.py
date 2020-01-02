@@ -64,15 +64,15 @@ def evaluate(input_dir: str, model_dir: str, seq_len: int) -> None:
     pred = {}
     loss = {}
     for d in datasets:
-        x[d] = _read_csv(input_dir, f"x_{d}.csv")
-        y[d] = _read_csv(input_dir, f"y_{d}.csv")
-    # for m in ["linear", "lstm"]:
-    for m in ["linear"]:
+        x[d] = _read_csv(input_dir, f"{d}_x.csv")
+        y[d] = _read_csv(input_dir, f"{d}_y.csv")
+    for m in ["linear", "lstm"]:
         models[m] = _load_model(model_dir, m)
     for d in x:
         for m in models:
             pred[d, m], loss[d, m] = _eval(seq_len, models[m], x[d], y[d])
-    fig, axs = plt.subplots(nrows=2, ncols=1)
+            print( "%4s  %6s  %e" % (d, m, loss[d, m].mean()))
+    fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(16, 9))
     axs[0].plot(pd.concat([y[d] for d in datasets]))
     axs[1].plot([])
     for m in models:
@@ -80,13 +80,13 @@ def evaluate(input_dir: str, model_dir: str, seq_len: int) -> None:
             pd.concat([pred[d, m] for d in datasets]),
             linestyle="",
             marker=".",
-            markersize=0.5,
+            markersize=0.1,
         )
         axs[1].plot(
             pd.concat([loss[d, m] for d in datasets]),
             linestyle="",
             marker=".",
-            markersize=0.5,
+            markersize=0.1,
         )
     axs[0].axvline(y["vali"].index[0], linestyle=":", c="black")
     axs[0].axvline(y["test"].index[0], linestyle=":", c="black")

@@ -7,7 +7,10 @@ import torch
 import torch.nn
 import torch.optim
 
-from .models import LinearModel, LSTMModel
+try:
+    from .models import LinearModel, LSTMModel
+except ImportError:
+    from models import LinearModel, LSTMModel
 
 
 def train(
@@ -16,10 +19,10 @@ def train(
     model_dir: str,
     checkpoint_path: str,
     model_class: str,
-    seq_len: int = 128,
-    hidden_dim: int = 64,
-    n_epochs: int = 16,
-    batch_size: int = 1024,
+    seq_len: int,
+    hidden_dim: int,
+    n_epochs: int,
+    batch_size: int,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
@@ -35,10 +38,10 @@ def train(
             device=device,
         )
 
-    x_trai = read_csv("x_trai.csv")
-    x_vali = read_csv("x_vali.csv")
-    y_trai = read_csv("y_trai.csv")
-    y_vali = read_csv("y_vali.csv")
+    x_trai = read_csv("trai_x.csv")
+    x_vali = read_csv("vali_x.csv")
+    y_trai = read_csv("trai_y.csv")
+    y_vali = read_csv("vali_y.csv")
 
     parameters = {
         "seq_len": seq_len,
@@ -136,10 +139,10 @@ if __name__ == "__main__":
         type=str,
         default=os.environ.get("SM_CHANNEL_CHECKPOINT_PATH"),
     )
-    parser.add_argument("--hidden-dim", type=int, default=64)
-    parser.add_argument("--n-epochs", type=int, default=16)
-    parser.add_argument("--seq-len", type=int, default=64)
-    parser.add_argument("--batch-size", type=int, default=1024)
+    parser.add_argument("--seq-len", type=int)
+    parser.add_argument("--hidden-dim", type=int)
+    parser.add_argument("--n-epochs", type=int)
+    parser.add_argument("--batch-size", type=int)
     args = parser.parse_args()
     train(
         input_dir=args.input_data_dir,

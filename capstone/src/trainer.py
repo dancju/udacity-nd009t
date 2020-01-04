@@ -33,7 +33,7 @@ def train(
                 os.path.join(input_dir, filename),
                 index_col="timestamp",
                 parse_dates=True,
-            ).values,
+            ).to_numpy(),
             dtype=torch.float,
             device=device,
         )
@@ -107,6 +107,33 @@ def train(
         train_losses.append(train_loss)
         valid_losses.append(valid_loss)
         scheduler.step()
+
+    # debugging
+    loss_fn = torch.nn.MSELoss(reduction="sum")
+    with torch.no_grad():
+        # train
+        train_loss = 0
+        for i in range(seq_len):
+            for j in range(i, len(x_trai) - seq_len + 1, seq_len * batch_size):
+                batch_size_ = min(batch_size, (len(x_trai) - j) // seq_len)
+                pred = model(x_trai[j : j + seq_len * batch_size_])
+                trut = y_trai[j + seq_len - 1 : j + seq_len * batch_size_ : seq_len]
+                loss = loss_fn(pred, trut)
+                train_loss += loss.item()
+        train_loss = train_loss / (len(x_trai) - seq_len + 1)
+        # validate
+        valid_loss = 0
+        for i in range(seq_len):
+            for j in range(i, len(x_vali) - seq_len + 1, seq_len * batch_size):
+                batch_size_ = min(batch_size, (len(x_vali) - j) // seq_len)
+                pred = model(x_vali[j : j + seq_len * batch_size_])
+                trut = y_vali[j + seq_len - 1 : j + seq_len * batch_size_ : seq_len]
+                loss = loss_fn(pred, trut)
+                valid_loss += loss.item()
+        valid_loss = valid_loss / (len(x_vali) - seq_len + 1)
+        print(
+            "|       | %.3e | %.3e |" % (train_loss, valid_loss), flush=True,
+        )
 
     pd.DataFrame({"train": train_losses, "valid": valid_losses}).to_csv(
         os.path.join(output_dir, "loss.csv"), index=False

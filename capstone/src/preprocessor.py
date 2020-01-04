@@ -62,7 +62,7 @@ def preprocess(df: pd.DataFrame, input_dir: str) -> None:
 
     scaler = StandardScaler()
     df_x = pd.DataFrame(
-        scaler.fit_transform(df_x.values), columns=df_x.columns, index=df_x.index
+        scaler.fit_transform(df_x.to_numpy()), columns=df_x.columns, index=df_x.index
     )
 
     df_y = pd.Series(df_x["vwap"].shift(-1), name="next")

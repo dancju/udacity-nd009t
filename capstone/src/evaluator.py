@@ -71,7 +71,7 @@ def evaluate(input_dir: str, model_dir: str, seq_len: int) -> None:
     for d in x:
         for m in models:
             pred[d, m], loss[d, m] = _eval(seq_len, models[m], x[d], y[d])
-            print( "%4s  %6s  %e" % (d, m, loss[d, m].mean()))
+            print("%4s  %6s  %e" % (d, m, loss[d, m].mean()))
     fig, axs = plt.subplots(nrows=2, ncols=1, figsize=(16, 9))
     axs[0].plot(pd.concat([y[d] for d in datasets]))
     axs[1].plot([])

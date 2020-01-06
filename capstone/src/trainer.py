@@ -131,9 +131,8 @@ def train(
                 loss = loss_fn(pred, trut)
                 valid_loss += loss.item()
         valid_loss = valid_loss / (len(x_vali) - seq_len + 1)
-        print(
-            "|       | %.3e | %.3e |" % (train_loss, valid_loss), flush=True,
-        )
+        print("loss of trai is %.3e" % train_loss, flush=True)
+        print("loss of vali is %.3e" % valid_loss, flush=True)
 
     pd.DataFrame({"train": train_losses, "valid": valid_losses}).to_csv(
         os.path.join(output_dir, "loss.csv"), index=False

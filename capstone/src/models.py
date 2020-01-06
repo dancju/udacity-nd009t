@@ -7,12 +7,12 @@ class LinearModel(torch.nn.Module):
         super(LinearModel, self).__init__()
         self.seq_len = seq_len
         self.n_features = n_features
-        self.hidden = torch.nn.Linear(seq_len * n_features, hidden_dim)
+        self.hidden = torch.nn.Linear(n_features, hidden_dim)
         self.predict = torch.nn.Linear(hidden_dim, output_dim)
 
     def forward(self, inputs: torch.Tensor):
-        inputs = inputs.view(-1, self.seq_len * self.n_features)
-        inputs = torch.nn.functional.relu(self.hidden(inputs))
+        inputs = inputs.view(-1, self.seq_len * self.n_features)[:,:self.n_features]
+        inputs = torch.sigmoid(self.hidden(inputs))
         inputs = self.predict(inputs)
         return inputs
 

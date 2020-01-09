@@ -49,44 +49,42 @@ def evaluate(input_dir: str, output_dir: str) -> None:
     axs[0, 1].axvline(y["test"].index[0], linestyle=":", c="black")
     axs[1, 1].axvline(y["vali"].index[0], linestyle=":", c="black")
     axs[1, 1].axvline(y["test"].index[0], linestyle=":", c="black")
-    # axs[1, 0].set_xlim(axs[0, 0].get_xlim())
-    # axs[1, 1].set_xlim(axs[0, 1].get_xlim())
     # axs[1, 0].set_ylim(0, 0.35)
     axs[1, 1].set_ylim(axs[1, 0].get_ylim())
     axs[0, 1].legend(["truth", "prediction"])
     axs[1, 0].text(
         date2num(y["trai"].index[y["trai"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "training",
         horizontalalignment="center",
     )
     axs[1, 0].text(
         date2num(y["vali"].index[y["vali"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "validation",
         horizontalalignment="center",
     )
     axs[1, 0].text(
         date2num(y["test"].index[y["test"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "testing",
         horizontalalignment="center",
     )
     axs[1, 1].text(
         date2num(y["trai"].index[y["trai"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "training",
         horizontalalignment="center",
     )
     axs[1, 1].text(
         date2num(y["vali"].index[y["vali"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "validation",
         horizontalalignment="center",
     )
     axs[1, 1].text(
         date2num(y["test"].index[y["test"].shape[0] // 2]),
-        0.3,
+        0.9 * axs[1, 0].get_ylim()[1],
         "testing",
         horizontalalignment="center",
     )

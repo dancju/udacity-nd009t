@@ -27,8 +27,9 @@ def train(
     output_dir: str,
     model_dir: str,
     hidden_dim: int,
-    n_epochs: int,
+    lr: float,
     batch_size: int,
+    n_epochs: int,
 ) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device {device}.")
@@ -53,7 +54,7 @@ def train(
     }
     model = Model(**parameters).to(device)
     loss_fn = torch.nn.MSELoss(reduction="sum")
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4)
 
     # training
@@ -98,7 +99,7 @@ def train(
             loss = pd.Series(loss.squeeze(), index=index)
         pred.to_csv(os.path.join(output_dir, f"pred_{dataset}_linear.csv"), header=True)
         loss.to_csv(os.path.join(output_dir, f"loss_{dataset}_linear.csv"), header=True)
-        print(f"loss of {dataset} is {loss.mean():.3f}")
+        print(f"loss of {dataset} is {loss.mean():.3e}")
 
     _evaluate(trai_x, trai_y, trai_y_i, "trai")
     _evaluate(vali_x, vali_y, vali_y_i, "vali")

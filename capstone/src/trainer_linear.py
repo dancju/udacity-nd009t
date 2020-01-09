@@ -55,7 +55,6 @@ def train(
     loss_fn = torch.nn.MSELoss(reduction="sum")
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=4)
-    # print(vali_y[-8:])
 
     # training
     print("| epoch | trai loss | vali loss | time/s |")
@@ -63,28 +62,29 @@ def train(
     for epoch in range(n_epochs):
         start_time = time.time()
         # train
-        optimizer.zero_grad()
         train_loss = 0
         for i in range(0, trai_x.shape[0], batch_size):
+            optimizer.zero_grad()
             pred = model(trai_x[i : i + batch_size])
-            train_loss += loss_fn(pred, trai_y[i : i + batch_size])
+            loss = loss_fn(pred, trai_y[i : i + batch_size])
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
         # validate
         with torch.no_grad():
             valid_loss = 0
             for i in range(0, vali_x.shape[0], batch_size):
                 pred = model(vali_x[i : i + batch_size])
-                valid_loss += loss_fn(pred, vali_y[i : i + batch_size])
+                loss = loss_fn(pred, vali_y[i : i + batch_size])
+                valid_loss += loss.item()
         # step
-        train_loss.backward()
-        optimizer.step()
-        train_loss = train_loss.item() / trai_x.shape[0]
-        valid_loss = valid_loss.item() / vali_x.shape[0]
+        train_loss = train_loss / trai_x.shape[0]
+        valid_loss = valid_loss / vali_x.shape[0]
         print(
             "| %5d | %.3e | %.3e | %6d |"
             % (epoch, train_loss, valid_loss, time.time() - start_time),
             flush=True,
         )
-        # print(pred[-8:])
         scheduler.step()
 
     # evaluating

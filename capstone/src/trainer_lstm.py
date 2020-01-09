@@ -22,6 +22,7 @@ class Model(torch.nn.Module):
     ) -> (torch.Tensor, (torch.Tensor, torch.Tensor)):
         lstm_out, states = self.lstm(inputs.view(-1, 1, self.n_features), states)
         output = self.linear(lstm_out[:, -1, :])
+        states = (states[0].clone().detach(), states[1].clone().detach())
         return output, states
 
 
@@ -67,24 +68,26 @@ def train(
     for epoch in range(n_epochs):
         start_time = time.time()
         # train
-        optimizer.zero_grad()
         train_loss = 0
         state = (torch.zeros(1, 1, hidden_dim), torch.zeros(1, 1, hidden_dim))
         for i in range(0, trai_x.shape[0], batch_size):
+            optimizer.zero_grad()
             pred, state = model(trai_x[i : i + batch_size], state)
-            train_loss += loss_fn(pred, trai_y[i : i + batch_size])
+            loss = loss_fn(pred, trai_y[i : i + batch_size])
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
         # validate
         with torch.no_grad():
             valid_loss = 0
             state = (torch.zeros(1, 1, hidden_dim), torch.zeros(1, 1, hidden_dim))
             for i in range(0, vali_x.shape[0], batch_size):
                 pred, state = model(vali_x[i : i + batch_size], state)
-                valid_loss += loss_fn(pred, vali_y[i : i + batch_size])
+                loss = loss_fn(pred, vali_y[i : i + batch_size])
+                valid_loss += loss.item()
         # step
-        train_loss.backward()
-        optimizer.step()
-        train_loss = train_loss.item() / trai_x.shape[0]
-        valid_loss = valid_loss.item() / vali_x.shape[0]
+        train_loss = train_loss / trai_x.shape[0]
+        valid_loss = valid_loss / vali_x.shape[0]
         print(
             "| %5d | %.3e | %.3e | %6d |"
             % (epoch, train_loss, valid_loss, time.time() - start_time),

@@ -52,7 +52,7 @@ def evaluate(input_dir: str, output_dir: str) -> None:
     # axs[1, 0].set_xlim(axs[0, 0].get_xlim())
     # axs[1, 1].set_xlim(axs[0, 1].get_xlim())
     # axs[1, 0].set_ylim(0, 0.35)
-    # axs[1, 1].set_ylim(0, 0.35)
+    axs[1, 1].set_ylim(axs[1, 0].get_ylim())
     axs[0, 1].legend(["truth", "prediction"])
     axs[1, 0].text(
         date2num(y["trai"].index[y["trai"].shape[0] // 2]),

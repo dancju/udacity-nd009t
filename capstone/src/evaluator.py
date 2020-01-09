@@ -155,7 +155,7 @@ def evaluate(input_dir: str, model_dir: str, seq_len: int) -> None:
     axs[0, 1].set_xticks([])
     axs[1, 0].set_xlabel("time")
     axs[1, 1].set_xlabel("time")
-    axs[0, 0].set_ylabel("scaled price")
+    axs[0, 0].set_ylabel("normalised price")
     axs[1, 0].set_ylabel("loss")
     axs[0, 0].set_title("Linear Model")
     axs[0, 1].set_title("LSTM Model")

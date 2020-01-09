@@ -1,7 +1,8 @@
 \documentclass[12pt, letterpaper]{article}
 
 \usepackage{amsmath}
-\usepackage[british]{babel}
+\usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{microtype}
 
@@ -26,25 +27,7 @@ There are many studies regarding algorithmic trading in financial markets based 
 \subsection{Problem Statement}
 
 \paragraph{}
-Given a time-series data of Bitcoin price with each time step indicating one minute, the goal is to build a price predictor for the price of the next minute.
-
-\paragraph{}
-In this study, data of the BitMEX's XBTZ19 contract, which is a Bitcoin futures contract expiring in December 2019, is used to train and test the predictor. The dataset is a table that each row indicates one minute and each column indicates a specific data such as open-high-low-close prices, volume, and volume-weighted average price (VWAP). The dataset is formulated as $\{x_t|t=1,2,\dots,T\}$, where $x_t$ is a vector of the data in minute $t$, such that
-
-\begin{equation*}
-    x_t := \begin{bmatrix}
-        \text{open price of time }t \\
-        \text{high price of time }t \\
-        \text{low price of time }t \\
-        \text{close price of time }t \\
-        \text{volume of time }t \\
-        \text{VWAP of time }t \\
-        \vdots
-    \end{bmatrix}.
-\end{equation*}
-
-\paragraph{}
-Given data of the time range with length of $N$ and end at time step $t$, viz $\{x_{i-N+1},\dots,x_i\}$, the predictor estimates the VWAP of the next time step $y_i=v_{i+1}$, where $v_{i+1}$ is an item of vector $x_{i+1}$. The predictor can be seen as a function $\hat y_i=f(x_{i-N+1}\dots x_i)$ mapping from the history trading data to the next VWAP.
+Given the trading data of a Bitcoin futures contract with each time step indicating one minute, the goal is to build a predictor for the volume-weighted average price (VWAP) of the next minute.
 
 \paragraph{}
 Two predictors, an LSTM model as solution and a linear model as benchmark will be built and compared with the metrics as discussed as follows.
@@ -52,65 +35,157 @@ Two predictors, an LSTM model as solution and a linear model as benchmark will b
 \subsection{Metrics}
 
 \paragraph{}
-The mean squared error (MSE) between labels $y$ and predictions $\hat y$ will be used to evaluate the performance of both of the benchmark model and the solution model. For a given $N$ and a time-series test dataset, all consecutive sub-sequence of the time-series with length $N$ will be used and equally contribute to the final MSE.
+The mean squared error (MSE) between labels \(y\) and predictions \(\hat y\) will be used to evaluate the performance of both of the benchmark model and the solution model. For a given integer \(N\) and a time-series dataset, all consecutive sub-sequence of the time-series with length \(N\) will be used and equally contribute to the final MSE\@.
 
-\section{Analysis} % _(approx. 2-4 pages)_
+\section{Analysis} % (approx. 2-4 pages)
+
+\subsection{Data Exploration}
+
+\paragraph{}
+In this study, trading data of BitMEX's XBTZ19 contract, which is a Bitcoin futures contract expiring in December 2019, will be used to train and test the predictor. The dataset could be fetched from BitMEX's official API without charge of fee. The API concerned with the desired data is documented at \url{https://www.bitmex.com/api/explorer/#!/Trade/Trade_getBucketed}.
+
+\paragraph{}
+The dataset is a table that each row indicates one minute and each column indicates a specific data described as Table~\ref{table:column-header}. Note that \texttt{open} is not defined as the price of the first trade in the specific time step, which in an unconventional definition and does not apply to other data sources.
+
+\begin{table}
+    \caption{column header semantics}%
+    \label{table:column-header}
+    \centering
+    \begin{tabular}{ll}
+        \toprule
+        \texttt{high,low} & highest/lowest price (two columns) \\
+        \texttt{close} & price of the last trade \\
+        \texttt{open} & \texttt{close} of the last time step \\
+        \texttt{vwap} & volume-weighted average price (VWAP) \\
+        \texttt{foreignNotional} & traded amount in units of US dollar \\
+        \texttt{homeNotional} & traded amount in units of Bitcoin \\
+        \texttt{trades} & number of trades \\
+        \texttt{volume} & alias of \texttt{foreignNotional} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\paragraph{}
+The dataset is formulated as \(\{x_t|t=1,2,\dots,T\}\), where \(x_t\) is a vector of the data in minute \(t\), such that \(x_t=(\mathtt{open}_t,\mathtt{high}_t,\mathtt{low}_t,\mathtt{close}_t,\mathtt{vwap}_t,\dots)\). A small sample and basic statistics are given in Table~\ref{table:sample} and Table~\ref{table:statistics}.
+
+\begin{table}
+    \caption{head and tail part of the dataset}%
+    \label{table:sample}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{l|*8r}
+        \toprule
+        & open & high & low & close & vwap & foreignNotional & homeNotional & trades \\
+        \midrule
+        2019-06-14 08:31 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
+        2019-06-14 08:32 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
+        2019-06-14 08:33 & 8500.00 & 8500.00 & 8260.00 & 8260.00 & 8262.4143 & 201 & 0.024328 & 3 \\
+        2019-06-14 08:34 & 8260.00 & 8390.00 & 8308.00 & 8308.00 & 8325.0083 & 13110 & 1.574852 & 7 \\
+        2019-06-14 08:35 & 8308.00 & 8390.00 & 8319.50 & 8336.50 & 8322.9297 & 13200 & 1.585986 & 5 \\
+        2019-06-14 08:36 & 8336.50 & 8317.50 & 8317.50 & 8317.50 & 8317.5000 & 10200 & 1.226346 & 3 \\
+        2019-06-14 08:37 & 8317.50 & 8327.50 & 8327.50 & 8327.50 & 8328.0000 & 500 & 0.060040 & 1 \\
+        2019-06-14 08:38 & 8327.50 & 8366.50 & 8362.50 & 8362.50 & 8365.4007 & 4001 & 0.478290 & 5 \\
+        \dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots \\
+        2019-12-27 11:54 & 7151.00 & 7155.50 & 7135.00 & 7137.50 & 7149.4960 & 632224 & 88.434680 & 62 \\
+        2019-12-27 11:55 & 7137.50 & 7149.50 & 7137.50 & 7149.00 & 7141.3269 & 60153 & 8.423772 & 44 \\
+        2019-12-27 11:56 & 7149.00 & 7142.00 & 7140.50 & 7141.50 & 7140.8169 & 407108 & 57.015170 & 34 \\
+        2019-12-27 11:57 & 7141.50 & 7149.50 & 7141.00 & 7141.50 & 7141.3269 & 325738 & 45.615289 & 22 \\
+        2019-12-27 11:58 & 7141.50 & 7150.00 & 7141.50 & 7150.00 & 7149.4960 & 390967 & 54.686307 & 31 \\
+        2019-12-27 11:59 & 7150.00 & 7150.00 & 7141.00 & 7148.50 & 7142.8571 & 540701 & 75.700246 & 30 \\
+        2019-12-27 12:00 & 7148.50 & 7148.50 & 7138.24 & 7138.24 & 7138.7778 & 41934166 & 5874.536073 & 59 \\
+        2019-12-27 12:01 & 7138.24 & 7138.24 & 7138.24 & 7138.24 & NaN & 0 & 0.000000 & 0 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
+\begin{table}
+    \caption{basic statistics of the dataset}%
+    \label{table:statistics}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{l|*8r}
+        \toprule
+        & open & high & low & close & vwap & foreignNotional & homeNotional & trades \\
+        \midrule
+        count & 282449.00 & 282449.00 & 282449.00 & 282449.00 & 243964.00 & 2.82e+05 & 282451.00 & 282451.00 \\
+        mean & 9499.88 & 9502.96 & 9496.68 & 9499.87 & 9558.33 & 3.69e+04 & 3.94 & 23.43 \\
+        std & 1621.16 & 1622.74 & 1619.51 & 1621.17 & 1632.99 & 1.37e+05 & 16.63 & 46.27 \\
+        min & 6438.00 & 6443.50 & 6431.00 & 6438.00 & 6432.52 & 0.00e+00 & 0.00 & 0.00 \\
+        25\% & 8158.00 & 8159.50 & 8157.00 & 8158.00 & 8180.62 & 6.05e+02 & 0.06 & 2.00 \\
+        50\% & 9542.50 & 9546.00 & 9540.00 & 9542.50 & 9589.56 & 7.33e+03 & 0.77 & 10.00 \\
+        75\% & 10616.50 & 10619.50 & 10614.00 & 10616.50 & 10656.43 & 3.20e+04 & 3.36 & 26.00 \\
+        max & 14600.00 & 14600.00 & 14539.00 & 14600.00 & 14547.57 & 4.19e+07 & 5874.53 & 1529.00 \\
+        \bottomrule
+    \end{tabular}}
+\end{table}
+
+\subsection{Exploratory Visualization}
+
+The VWAP and volume of the dataset is shown in Figure~\ref{fig:input}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{input.png}
+    \caption{VWAP and volume of the dataset}%
+    \label{fig:input}
+\end{figure}
+
+\subsection{Algorithms and Techniques}
+
+\paragraph{}
+The solution model consists of one LSTM layer and one linear layer. The LSTM layer is formally formulated as follows:
+
+\begin{align*}
+    i_t & =\sigma\left(W_{ii}x_t+b_{ii}+W_{hi}h_{(t-1)}+b_{hi}\right), \\
+    f_t & =\sigma\left(W_{if}x_t+b_{if}+W_{hf}h_{(t-1)}+b_{hf}\right), \\
+    g_t & =\tanh\left(W_{ig}x_t+b_{ig}+W_{hg}h_{(t-1)}+b_{hg}\right), \\
+    o_t & =\sigma\left(W_{io}x_t+b_{io}+W_{ho}h_{(t-1)}+b_{ho}\right), \\
+    c_t & =f_t*c_{(t-1)}+i_t*g_t, \\
+    h_t & =o_t*\tanh(c_t).
+\end{align*}
+
+where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma\) is the sigmoid function, and \(*\) is the Hadamard product.
+
+\subsection{Benchmark}
+
+\paragraph{}
+The benchmark model consists of two linear regression layers:
+
+\begin{align*}
+    h & =\mathrm{ReLU}\left(xA_1+b_1\right), \\
+    y  & =hA_2+b_2.
+\end{align*}
+
+\section{Methodology} % (approx. 3-5 pages)
+
+\subsection{Data Preprocessing}
+
+\paragraph{}
+Data preprocessing steps are listed as follows.
+
+\paragraph{Crawling} Since new data are generating every minute, new rows could be fetched from the data source. The crawler should be able to handle locally cached data and progressively persisting new data.
+
+\paragraph{Column dropping} Columns \texttt{open} and \texttt{volume} do not provide new information and are dropped.
+
+\paragraph{Null filling} For time steps that do not contain any trades, the corresponding \texttt{vwap} columns are null. These items will be propagated with last valid observation with \texttt{pandas.DataFrame.ffill()}.
+
+\paragraph{Feature engineering} Moving average convergence/divergence (MACD) with short period of 12 and long period of 26, and relative strength index (RSI) with dataframe of 14, are calculated and appended as extra features for the following training and evaluating.
+
+\paragraph{Normalisation} All features will be normalised.
+
+\paragraph{Labelling} Each row will be labelled a learning target, with the VWAP of the next row.
+
+\paragraph{Splitting} The entire dataset will be split without shuffling into three consecutive parts for training, validation, and testing, while the lengths proportionate to 6:2:2.
+
+\subsection{Implementation}
+
+\paragraph{}
+MSE and the LSTM model could be easily implemented with PyTorch's builtin \texttt{torch.nn.MSELoss} class and \texttt{torch.nn.LSTM} class.
+
+\subsection{Refinement}
+
+\paragraph{}
+The learning rate is automatically adjusted with the scheduler \\\texttt{torch.optim.lr\_scheduler.StepLR}. Moreover, the number of dimensions of the hidden layer are tuned with AWS SageMaker's hyperparameter tuning, which suggests that
 
 \end{document}
-
-### Data Exploration
-
-In this section, you will be expected to analyze the data you are using for the problem. This data can either be in the form of a dataset (or datasets), input data (or input files), or even an environment. The type of data should be thoroughly described and, if possible, have basic statistics and information presented (such as discussion of input features or defining characteristics about the input or environment). Any abnormalities or interesting qualities about the data that may need to be addressed have been identified (such as features that need to be transformed or the possibility of outliers). Questions to ask yourself when writing this section:
-
-- _If a dataset is present for this problem, have you thoroughly discussed certain features about the dataset? Has a data sample been provided to the reader?_
-- _If a dataset is present for this problem, are statistics about the dataset calculated and reported? Have any relevant results from this calculation been discussed?_
-- _If a dataset is **not** present for this problem, has discussion been made about the input space or input data for your problem?_
-- _Are there any abnormalities or characteristics about the input space or dataset that need to be addressed? (categorical variables, missing values, outliers, etc.)_
-
-### Exploratory Visualization
-
-In this section, you will need to provide some form of visualization that summarizes or extracts a relevant characteristic or feature about the data. The visualization should adequately support the data being used. Discuss why this visualization was chosen and how it is relevant. Questions to ask yourself when writing this section:
-
-- _Have you visualized a relevant characteristic or feature about the dataset or input data?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
-
-### Algorithms and Techniques
-
-In this section, you will need to discuss the algorithms and techniques you intend to use for solving the problem. You should justify the use of each one based on the characteristics of the problem and the problem domain. Questions to ask yourself when writing this section:
-
-- _Are the algorithms you will use, including any default variables/parameters in the project clearly defined?_
-- _Are the techniques to be used thoroughly discussed and justified?_
-- _Is it made clear how the input data or datasets will be handled by the algorithms and techniques chosen?_
-
-### Benchmark
-
-In this section, you will need to provide a clearly defined benchmark result or threshold for comparing across performances obtained by your solution. The reasoning behind the benchmark (in the case where it is not an established result) should be discussed. Questions to ask yourself when writing this section:
-
-- _Has some result or value been provided that acts as a benchmark for measuring performance?_
-- _Is it clear how this result or value was obtained (whether by data or by hypothesis)?_
-
-## III. Methodology
-
-_(approx. 3-5 pages)_
-
-### Data Preprocessing
-
-In this section, all of your preprocessing steps will need to be clearly documented, if any were necessary. From the previous section, any of the abnormalities or characteristics that you identified about the dataset will be addressed and corrected here. Questions to ask yourself when writing this section:
-
-- _If the algorithms chosen require preprocessing steps like feature selection or feature transformations, have they been properly documented?_
-- _Based on the **Data Exploration** section, if there were abnormalities or characteristics that needed to be addressed, have they been properly corrected?_
-- _If no preprocessing is needed, has it been made clear why?_
-
-### Implementation
-
-In this section, the process for which metrics, algorithms, and techniques that you implemented for the given data will need to be clearly documented. It should be abundantly clear how the implementation was carried out, and discussion should be made regarding any complications that occurred during this process. Questions to ask yourself when writing this section:
-
-- _Is it made clear how the algorithms and techniques were implemented with the given datasets or input data?_
-- _Were there any complications with the original metrics or techniques that required changing prior to acquiring a solution?_
-- _Was there any part of the coding process (e.g., writing complicated functions) that should be documented?_
-
-### Refinement
 
 In this section, you will need to discuss the process of improvement you made upon the algorithms and techniques you used in your implementation. For example, adjusting parameters for certain models to acquire improved solutions would fall under the refinement category. Your initial and final solutions should be reported, as well as any significant intermediate results as necessary. Questions to ask yourself when writing this section:
 
@@ -118,11 +193,16 @@ In this section, you will need to discuss the process of improvement you made up
 - _Is the process of improvement clearly documented, such as what techniques were used?_
 - _Are intermediate and final solutions clearly reported as the process is improved?_
 
-## IV. Results
+\section{Results} % (approx. 2-3 pages)
 
-_(approx. 2-3 pages)_
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{output.png}
+    \caption{blah blah}%
+    \label{fig:output}
+\end{figure}
 
-### Model Evaluation and Validation
+\subsection{Model Evaluation and Validation}
 
 In this section, the final model and any supporting qualities should be evaluated in detail. It should be clear how the final model was derived and why this model was chosen. In addition, some type of analysis should be used to validate the robustness of this model and its solution, such as manipulating the input data or environment to see how the model’s solution is affected (this is called sensitivity analysis). Questions to ask yourself when writing this section:
 
@@ -131,7 +211,7 @@ In this section, the final model and any supporting qualities should be evaluate
 - _Is the model robust enough for the problem? Do small perturbations (changes) in training data or the input space greatly affect the results?_
 - _Can results found from the model be trusted?_
 
-### Justification
+\subsection{Justification}
 
 In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
 
@@ -139,11 +219,9 @@ In this section, your model’s final solution and its results should be compare
 - _Have you thoroughly analyzed and discussed the final solution?_
 - _Is the final solution significant enough to have solved the problem?_
 
-## V. Conclusion
+\section{Conclusion} % (approx. 1-2 pages)
 
-_(approx. 1-2 pages)_
-
-### Free-Form Visualization
+\subsection{Free-Form Visualization}
 
 In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
 
@@ -151,7 +229,7 @@ In this section, you will need to provide some form of visualization that emphas
 - _Is the visualization thoroughly analyzed and discussed?_
 - _If a plot is provided, are the axes, title, and datum clearly defined?_
 
-### Reflection
+\subsection{Reflection}
 
 In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
 
@@ -160,7 +238,7 @@ In this section, you will summarize the entire end-to-end problem solution and d
 - _Were there any difficult aspects of the project?_
 - _Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?_
 
-### Improvement
+\subsection{Improvement}
 
 In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
 

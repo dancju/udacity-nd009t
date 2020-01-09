@@ -11,7 +11,7 @@ class LinearModel(torch.nn.Module):
         self.predict = torch.nn.Linear(hidden_dim, output_dim)
 
     def forward(self, inputs: torch.Tensor):
-        inputs = inputs.view(-1, self.seq_len * self.n_features)[:,:self.n_features]
+        inputs = inputs.view(-1, self.seq_len * self.n_features)[:, : self.n_features]
         inputs = torch.sigmoid(self.hidden(inputs))
         inputs = self.predict(inputs)
         return inputs

@@ -105,8 +105,8 @@ The training dataset will be sent to train the benchmark model and the solution 
 The benchmark model consists of two linear regression layers:
 
 \begin{align*}
-    x_1 & =\mathrm{ReLU}(xA_1+b_1) \\
-    y   & =\sigma(x_1A_2+b_2)
+    h & =\mathrm{ReLU}(xA_1+b_1) \\
+    y & =hA_2+b_2
 \end{align*}
 
 
@@ -122,7 +122,7 @@ The solution model consists of one LSTM layer and one linear layer. The LSTM lay
     h_t & =o_t*\tanh(c_t)
 \end{align*}
 
-where where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma\) is the sigmoid function, and \(*\) is the Hadamard product.
+where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma\) is the sigmoid function, and \(*\) is the Hadamard product.
 
 \subsection{Evaluation}
 

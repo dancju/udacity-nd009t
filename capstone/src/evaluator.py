@@ -119,10 +119,17 @@ def _plot_scatters(
 def _plot_scatter(
     output_dir: str, datasets: list, models: list, y: dict, pred: dict
 ) -> None:
-    fig, ax = plt.subplots(figsize=(16, 9))
+    fig, ax = plt.subplots(figsize=(9, 9))
+    ax.axis("equal")
     for m in models:
         ax.scatter(y["test"], pred["test", m])
     ax.legend(models)
+    ax.plot(
+        [y["test"].min(), y["test"].max()],
+        [y["test"].min(), y["test"].max()],
+        linestyle=":",
+        color="black",
+    )
     ax.set_xlabel("truth")
     ax.set_ylabel("prediction")
     plt.savefig(os.path.join(output_dir, "evaluate_scatter.png"))

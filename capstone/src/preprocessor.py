@@ -1,9 +1,9 @@
 import os
-# import pickle
+import pickle
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
-# from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler
 
 
 def macd(prices: pd.Series, n_fast=12, n_slow=26) -> pd.DataFrame:
@@ -52,38 +52,23 @@ def preprocess(df: pd.DataFrame, input_dir: str) -> None:
             "high_log": df.high.apply(pd.np.log),
             "low_log": df.low.apply(pd.np.log),
             "close_log": df.close.apply(pd.np.log),
+            "trades_log": (df.trades + 1).apply(pd.np.log),
+            "home_notional_log": (df.homeNotional + 1).apply(pd.np.log),
+            "foreign_notional_log": (df.foreignNotional + 1).apply(pd.np.log),
         }
     )
     df_x.vwap_log.fillna(method="ffill", inplace=True)
-    df_x["vwap_log_diff"] = df_x.vwap_log - df_x.vwap_log.shift()
-    df_x["high_log_diff"] = df_x.high_log - df_x.vwap_log.shift()
-    df_x["low_log_diff"] = df_x.low_log - df_x.vwap_log.shift()
-    df_x["close_log_diff"] = df_x.close_log - df_x.vwap_log.shift()
-    df_x.drop(
-        ["vwap_log", "high_log", "low_log", "close_log"], axis="columns", inplace=True
-    )
-    df_x = df_x.join(
-        pd.DataFrame(
-            {
-                "trades_log": (df.trades + 1).apply(pd.np.log),
-                "home_notional_log": (df.homeNotional + 1).apply(pd.np.log),
-                "foreign_notional_log": (df.foreignNotional + 1).apply(pd.np.log),
-            }
-        )
-    )
     df_x = df_x.join(macd(df.vwap))
     df_x = df_x.join(rsi(df.high, df.low))
     while pd.isna(df_x.iloc[0].macd_sign_12_26):
         df_x = df_x.iloc[1:]
 
-    # scaler = StandardScaler()
-    # df_x = pd.DataFrame(
-    #     scaler.fit_transform(df_x.to_numpy()), columns=df_x.columns, index=df_x.index
-    # )
+    scaler = StandardScaler()
+    df_x = pd.DataFrame(
+        scaler.fit_transform(df_x.to_numpy()), columns=df_x.columns, index=df_x.index
+    )
 
-    df_y = pd.Series(df_x["vwap_log_diff"].shift(-1), name="next")
-    df_x = df_x[:-1]
-    df_y = df_y[:-1]
+    df_y = pd.Series(df_x.vwap_log.shift(-1), name="next")
 
     trai_x, vali_x = train_test_split(df_x, test_size=0.4, shuffle=False)
     vali_x, test_x = train_test_split(vali_x, test_size=0.5, shuffle=False)
@@ -96,4 +81,4 @@ def preprocess(df: pd.DataFrame, input_dir: str) -> None:
     trai_y.to_csv(os.path.join(input_dir, "trai_y.csv"), header=True)
     vali_y.to_csv(os.path.join(input_dir, "vali_y.csv"), header=True)
     test_y.to_csv(os.path.join(input_dir, "test_y.csv"), header=True)
-    # pickle.dump(scaler, open(os.path.join(input_dir, "scaler.pkl"), "wb"))
+    pickle.dump(scaler, open(os.path.join(input_dir, "scaler.pkl"), "wb"))

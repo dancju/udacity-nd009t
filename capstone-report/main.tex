@@ -27,33 +27,43 @@ There are many studies regarding algorithmic trading in financial markets based 
 \subsection{Problem Statement}
 
 \paragraph{}
-Given the trading data of a Bitcoin futures contract with each time step indicating one minute, the goal is to build a predictor for the volume-weighted average price (VWAP) of the next minute.
+Given the time-series trading data of a Bitcoin futures contract with each time step indicating one minute, the goal is to build a predictor for the volume-weighted average price (VWAP) of the next minute.
 
 \paragraph{}
-Two predictors, an LSTM model as solution and a linear model as benchmark will be built and compared with the metrics as discussed as follows.
+In this study, a price predictor based on LSTM will be built.
 
 \subsection{Metrics}
 
 \paragraph{}
-The mean squared error (MSE) between labels \(y\) and predictions \(\hat y\) will be used to evaluate the performance of both of the benchmark model and the solution model. For a given integer \(N\) and a time-series dataset, all consecutive sub-sequence of the time-series with length \(N\) will be used and equally contribute to the final MSE\@.
+The root-mean-square deviation (RMSD) between labels \(y\) and predictions \(\hat y\) will be used to evaluate the performance of both of the benchmark model and the solution model. RMSD is defined as follows,
+
+\begin{align*}
+    \mathrm{MSE}(y,\hat y)&:=\frac{1}{N}\sum_i(y_i-\hat y_i)^2, \\
+    \mathrm{RMSD}(y,\hat y)&:=\sqrt{\mathrm{MSE}(y,\hat y)}.
+\end{align*}
+
+For each time step \(t\), the label \(y_t\) is defined as the VWAP of the next time step,
+
+\begin{equation*}
+    y_t:=\mathtt{vwap}_{t+1}.
+\end{equation*}
 
 \section{Analysis} % (approx. 2-4 pages)
 
 \subsection{Data Exploration}
 
 \paragraph{}
-In this study, trading data of BitMEX's XBTZ19 contract, which is a Bitcoin futures contract expiring in December 2019, will be used to train and test the predictor. The dataset could be fetched from BitMEX's official API without charge of fee. The API concerned with the desired data is documented at \url{https://www.bitmex.com/api/explorer/#!/Trade/Trade_getBucketed}.
+In this study, trading data of BitMEX's XBTZ19 contract, which is a Bitcoin futures contract being traded around the clock from 16 June to 27 December 2019, will be used to train and test the predictor. The dataset could be fetched from BitMEX's official API without charge of fee.\footnote{The API concerned with the desired data is documented at \url{https://www.bitmex.com/api/explorer/\#!/Trade/Trade_getBucketed}}
 
 \paragraph{}
-The dataset is a table that each row indicates one minute and each column indicates a specific data described as Table~\ref{table:column-header}. Note that \texttt{open} is not defined as the price of the first trade in the specific time step, which in an unconventional definition and does not apply to other data sources.
+The dataset is a table that each row indicates one minute and each column indicates a specific data described as Table~\ref{table:column-header}. Note that \texttt{open} is not defined as the price of the first trade in the specific time step, which is an unconventional definition and does not apply to other data sources.
 
 \begin{table}
-    \caption{column header semantics}%
-    \label{table:column-header}
     \centering
     \begin{tabular}{ll}
         \toprule
-        \texttt{high,low} & highest/lowest price (two columns) \\
+        \texttt{high} & highest price \\
+        \texttt{low} & lowest price \\
         \texttt{close} & price of the last trade \\
         \texttt{open} & \texttt{close} of the last time step \\
         \texttt{vwap} & volume-weighted average price (VWAP) \\
@@ -63,43 +73,43 @@ The dataset is a table that each row indicates one minute and each column indica
         \texttt{volume} & alias of \texttt{foreignNotional} \\
         \bottomrule
     \end{tabular}
+    \caption{Column header semantics}%
+    \label{table:column-header}
 \end{table}
 
 \paragraph{}
-The dataset is formulated as \(\{x_t|t=1,2,\dots,T\}\), where \(x_t\) is a vector of the data in minute \(t\), such that \(x_t=(\mathtt{open}_t,\mathtt{high}_t,\mathtt{low}_t,\mathtt{close}_t,\mathtt{vwap}_t,\dots)\). A small sample and basic statistics are given in Table~\ref{table:sample} and Table~\ref{table:statistics}.
+The dataset is formulated as \( \{x_t|t=1,2,\dots,T\} \), where \(x_t\) is a vector of the data in minute \(t\), such that \(x_t=(\mathtt{open}_t,\mathtt{high}_t,\mathtt{low}_t,\mathtt{close}_t,\mathtt{vwap}_t,\dots)\). A small sample and some basic statistics are shown in Table~\ref{table:sample} and Table~\ref{table:statistics}.
 
 \begin{table}
-    \caption{head and tail part of the dataset}%
-    \label{table:sample}
     \resizebox{\textwidth}{!}{
     \begin{tabular}{l|*8r}
         \toprule
         & open & high & low & close & vwap & foreignNotional & homeNotional & trades \\
         \midrule
-        2019-06-14 08:31 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
-        2019-06-14 08:32 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
-        2019-06-14 08:33 & 8500.00 & 8500.00 & 8260.00 & 8260.00 & 8262.4143 & 201 & 0.024328 & 3 \\
-        2019-06-14 08:34 & 8260.00 & 8390.00 & 8308.00 & 8308.00 & 8325.0083 & 13110 & 1.574852 & 7 \\
-        2019-06-14 08:35 & 8308.00 & 8390.00 & 8319.50 & 8336.50 & 8322.9297 & 13200 & 1.585986 & 5 \\
-        2019-06-14 08:36 & 8336.50 & 8317.50 & 8317.50 & 8317.50 & 8317.5000 & 10200 & 1.226346 & 3 \\
-        2019-06-14 08:37 & 8317.50 & 8327.50 & 8327.50 & 8327.50 & 8328.0000 & 500 & 0.060040 & 1 \\
-        2019-06-14 08:38 & 8327.50 & 8366.50 & 8362.50 & 8362.50 & 8365.4007 & 4001 & 0.478290 & 5 \\
+        2019--06--14 08:31 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
+        2019--06--14 08:32 & NaN & NaN & NaN & NaN & NaN & 0 & 0.000000 & 0 \\
+        2019--06--14 08:33 & 8500.00 & 8500.00 & 8260.00 & 8260.00 & 8262.4143 & 201 & 0.024328 & 3 \\
+        2019--06--14 08:34 & 8260.00 & 8390.00 & 8308.00 & 8308.00 & 8325.0083 & 13110 & 1.574852 & 7 \\
+        2019--06--14 08:35 & 8308.00 & 8390.00 & 8319.50 & 8336.50 & 8322.9297 & 13200 & 1.585986 & 5 \\
+        2019--06--14 08:36 & 8336.50 & 8317.50 & 8317.50 & 8317.50 & 8317.5000 & 10200 & 1.226346 & 3 \\
+        2019--06--14 08:37 & 8317.50 & 8327.50 & 8327.50 & 8327.50 & 8328.0000 & 500 & 0.060040 & 1 \\
+        2019--06--14 08:38 & 8327.50 & 8366.50 & 8362.50 & 8362.50 & 8365.4007 & 4001 & 0.478290 & 5 \\
         \dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots \\
-        2019-12-27 11:54 & 7151.00 & 7155.50 & 7135.00 & 7137.50 & 7149.4960 & 632224 & 88.434680 & 62 \\
-        2019-12-27 11:55 & 7137.50 & 7149.50 & 7137.50 & 7149.00 & 7141.3269 & 60153 & 8.423772 & 44 \\
-        2019-12-27 11:56 & 7149.00 & 7142.00 & 7140.50 & 7141.50 & 7140.8169 & 407108 & 57.015170 & 34 \\
-        2019-12-27 11:57 & 7141.50 & 7149.50 & 7141.00 & 7141.50 & 7141.3269 & 325738 & 45.615289 & 22 \\
-        2019-12-27 11:58 & 7141.50 & 7150.00 & 7141.50 & 7150.00 & 7149.4960 & 390967 & 54.686307 & 31 \\
-        2019-12-27 11:59 & 7150.00 & 7150.00 & 7141.00 & 7148.50 & 7142.8571 & 540701 & 75.700246 & 30 \\
-        2019-12-27 12:00 & 7148.50 & 7148.50 & 7138.24 & 7138.24 & 7138.7778 & 41934166 & 5874.536073 & 59 \\
-        2019-12-27 12:01 & 7138.24 & 7138.24 & 7138.24 & 7138.24 & NaN & 0 & 0.000000 & 0 \\
+        2019--12--27 11:54 & 7151.00 & 7155.50 & 7135.00 & 7137.50 & 7149.4960 & 632224 & 88.434680 & 62 \\
+        2019--12--27 11:55 & 7137.50 & 7149.50 & 7137.50 & 7149.00 & 7141.3269 & 60153 & 8.423772 & 44 \\
+        2019--12--27 11:56 & 7149.00 & 7142.00 & 7140.50 & 7141.50 & 7140.8169 & 407108 & 57.015170 & 34 \\
+        2019--12--27 11:57 & 7141.50 & 7149.50 & 7141.00 & 7141.50 & 7141.3269 & 325738 & 45.615289 & 22 \\
+        2019--12--27 11:58 & 7141.50 & 7150.00 & 7141.50 & 7150.00 & 7149.4960 & 390967 & 54.686307 & 31 \\
+        2019--12--27 11:59 & 7150.00 & 7150.00 & 7141.00 & 7148.50 & 7142.8571 & 540701 & 75.700246 & 30 \\
+        2019--12--27 12:00 & 7148.50 & 7148.50 & 7138.24 & 7138.24 & 7138.7778 & 41934166 & 5874.536073 & 59 \\
+        2019--12--27 12:01 & 7138.24 & 7138.24 & 7138.24 & 7138.24 & NaN & 0 & 0.000000 & 0 \\
         \bottomrule
     \end{tabular}}
+    \caption{Head and tail part of the dataset}%
+    \label{table:sample}
 \end{table}
 
 \begin{table}
-    \caption{basic statistics of the dataset}%
-    \label{table:statistics}
     \resizebox{\textwidth}{!}{
     \begin{tabular}{l|*8r}
         \toprule
@@ -115,17 +125,20 @@ The dataset is formulated as \(\{x_t|t=1,2,\dots,T\}\), where \(x_t\) is a vecto
         max & 14600.00 & 14600.00 & 14539.00 & 14600.00 & 14547.57 & 4.19e+07 & 5874.53 & 1529.00 \\
         \bottomrule
     \end{tabular}}
+    \caption{Basic statistics of the dataset}%
+    \label{table:statistics}
 \end{table}
 
 \subsection{Exploratory Visualization}
 
-The VWAP and volume of the dataset is shown in Figure~\ref{fig:input}.
+\paragraph{}
+The VWAP and volume of the dataset are shown in Figure~\ref{fig:dataset}.
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{input.png}
+    \includegraphics[width=\textwidth]{figures/dataset.png}
     \caption{VWAP and volume of the dataset}%
-    \label{fig:input}
+    \label{fig:dataset}
 \end{figure}
 
 \subsection{Algorithms and Techniques}
@@ -142,7 +155,7 @@ The solution model consists of one LSTM layer and one linear layer. The LSTM lay
     h_t & =o_t*\tanh(c_t).
 \end{align*}
 
-where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma\) is the sigmoid function, and \(*\) is the Hadamard product.
+where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma \) is the sigmoid function, and \(*\) is the Hadamard product.
 
 \subsection{Benchmark}
 
@@ -150,8 +163,8 @@ where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at ti
 The benchmark model consists of two linear regression layers:
 
 \begin{align*}
-    h & =\mathrm{ReLU}\left(xA_1+b_1\right), \\
-    y  & =hA_2+b_2.
+    h&=\mathrm{ReLU}\left(xA_1+b_1\right), \\
+    \hat y&=hA_2+b_2.
 \end{align*}
 
 \section{Methodology} % (approx. 3-5 pages)
@@ -161,94 +174,177 @@ The benchmark model consists of two linear regression layers:
 \paragraph{}
 Data preprocessing steps are listed as follows.
 
-\paragraph{Crawling} Since new data are generating every minute, new rows could be fetched from the data source. The crawler should be able to handle locally cached data and progressively persisting new data.
+\paragraph{Crawling} Since new data are generating every minute before the futures expires, new rows could be fetched from the data source. The crawler should be able to handle locally cached data and progressively persisting new data.
 
-\paragraph{Column dropping} Columns \texttt{open} and \texttt{volume} do not provide new information and are dropped.
+\paragraph{Column dropping} Columns \texttt{open} and \texttt{volume} do not provide new information to the rest part and are consequently dropped.
 
-\paragraph{Null filling} For time steps that do not contain any trades, the corresponding \texttt{vwap} columns are null. These items will be propagated with last valid observation with \texttt{pandas.DataFrame.ffill()}.
+\paragraph{Null filling} For time steps that do not contain any trades, the corresponding \texttt{vwap} columns are null. These items will be propagated with last valid observation.
 
-\paragraph{Feature engineering} Moving average convergence/divergence (MACD) with short period of 12 and long period of 26, and relative strength index (RSI) with dataframe of 14, are calculated and appended as extra features for the following training and evaluating.
+\paragraph{Feature engineering} Moving average convergence/divergence (MACD) with the short period of 12 and the long period of 26, and relative strength index (RSI) with the timeframe of 14, are calculated and appended as extra columns for consequent processing.
 
 \paragraph{Normalisation} All features will be normalised.
 
-\paragraph{Labelling} Each row will be labelled a learning target, with the VWAP of the next row.
+\paragraph{Labelling} Each row will be labelled a learning target. The learning target has different definitions in the initial and final solution, which will be illustrated in Subsection~\ref{sec:refinement}.
 
-\paragraph{Splitting} The entire dataset will be split without shuffling into three consecutive parts for training, validation, and testing, while the lengths proportionate to 6:2:2.
+\paragraph{Splitting} The entire dataset will be split without shuffling into three consecutive parts for training, validation, and testing, while the lengths proportionate to 6:2:2. Individually, their ranges are listed in Table~\ref{table:split}.
+
+\begin{table}
+    \centering
+    \begin{tabular}{lrr}
+        \toprule
+                   &        from &          to \\
+        \midrule
+        training   & 2019 Jun 14 & 2019 Oct 09 \\
+        validation & 2019 Oct 10 & 2019 Nov 17 \\
+        testing    & 2019 Nov 18 & 2019 Dec 27 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Dataset splitting}%
+    \label{table:split}
+\end{table}
 
 \subsection{Implementation}
 
 \paragraph{}
-MSE and the LSTM model could be easily implemented with PyTorch's builtin \texttt{torch.nn.MSELoss} class and \texttt{torch.nn.LSTM} class.
+Loss function and the LSTM model could be implemented with PyTorch's builtin \texttt{torch.nn.MSELoss} class and \texttt{torch.nn.LSTM} class.
 
-\subsection{Refinement}
+\subsection{Refinement}\label{sec:refinement}
 
 \paragraph{}
-The learning rate is automatically adjusted with the scheduler \\\texttt{torch.optim.lr\_scheduler.StepLR}. Moreover, the number of dimensions of the hidden layer are tuned with AWS SageMaker's hyperparameter tuning, which suggests that
+In the initial solution, the learning target is the label \(y\), i.e.\ the VWAP of the next time step, i.e.
 
-\end{document}
+\begin{equation*}
+    \hat y_t=f(x_t)=\mathtt{vwap}_{t+1}+\varepsilon_t,
+\end{equation*}
 
-In this section, you will need to discuss the process of improvement you made upon the algorithms and techniques you used in your implementation. For example, adjusting parameters for certain models to acquire improved solutions would fall under the refinement category. Your initial and final solutions should be reported, as well as any significant intermediate results as necessary. Questions to ask yourself when writing this section:
+where \(f(\cdot)\) is the LSTM model and \(\varepsilon_n\) is the residual. However, in this solution, a high bias is observed on the testing dataset (as shown in Figure~\ref{fig:pred1}). Since the price does not vary significantly in one minute, using the model to estimate the price change in one minute could reduce the bias, which leads to the final solution.
 
-- _Has an initial solution been found and clearly reported?_
-- _Is the process of improvement clearly documented, such as what techniques were used?_
-- _Are intermediate and final solutions clearly reported as the process is improved?_
+\paragraph{}
+In the final solution, the learning target is defined as the difference of the logarithm of the VWAP between this time step and the next, i.e.
+
+\begin{align*}
+    f(x_t)&=\log(\mathtt{vwap}_{t+1})-\log(\mathtt{vwap}_t)+\varepsilon_t, \\
+    \hat y_t&=\mathtt{vwap}_t\exp(f(x_t))=\mathtt{vwap}_{t+1}\exp(\varepsilon_t).
+\end{align*}
+
+Even though the estimation \(\hat y\) is more vulnerable to a higher residual than the former solution, both bias and variance are reduced in the experiment results.
+
+\paragraph{}
+In the following sections, these two solutions described above will be named Solution I and Solution II\@.
 
 \section{Results} % (approx. 2-3 pages)
 
-\begin{figure}
-    \centering
-    \includegraphics[width=\textwidth]{output.png}
-    \caption{blah blah}%
-    \label{fig:output}
-\end{figure}
-
 \subsection{Model Evaluation and Validation}
 
-In this section, the final model and any supporting qualities should be evaluated in detail. It should be clear how the final model was derived and why this model was chosen. In addition, some type of analysis should be used to validate the robustness of this model and its solution, such as manipulating the input data or environment to see how the model’s solution is affected (this is called sensitivity analysis). Questions to ask yourself when writing this section:
-
-- _Is the final model reasonable and aligning with solution expectations? Are the final parameters of the model appropriate?_
-- _Has the final model been tested with various inputs to evaluate whether the model generalizes well to unseen data?_
-- _Is the model robust enough for the problem? Do small perturbations (changes) in training data or the input space greatly affect the results?_
-- _Can results found from the model be trusted?_
+\paragraph{}
+Since the dataset, containing 282452 minutes/rows, is big enough, and the test data was not used to train or tune the model, it could be concluded that the model is robust enough to estimate unseen data.
 
 \subsection{Justification}
 
-In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
+% In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
 
-- _Are the final results found stronger than the benchmark result reported earlier?_
-- _Have you thoroughly analyzed and discussed the final solution?_
-- _Is the final solution significant enough to have solved the problem?_
+% - Are the final results found stronger than the benchmark result reported earlier?
+% - Have you thoroughly analyzed and discussed the final solution?
+% - Is the final solution significant enough to have solved the problem?
+
+\paragraph{}
+The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{table:loss}, which illustrates that the final solution (Solution II) overperforms the benchmark significantly on the entire dataset.
+
+\begin{table}
+    \centering
+    \begin{tabular}{llr}
+        \toprule
+        Model     & Dataset &  RMSD \\
+        \midrule
+                    & training   & 209.53 \\
+        Benchmark   & validation & 107.05 \\
+                    & testing    & 125.28 \\
+        \midrule
+                    & training   & 147.93 \\
+        Solution I  & validation & 110.03 \\
+                    & testing    & 476.31 \\
+        \midrule
+                    & training   &  11.96 \\
+        Solution II & validation &   6.98 \\
+                    & testing    &   5.53 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Loss}%
+    \label{table:loss}
+\end{table}
 
 \section{Conclusion} % (approx. 1-2 pages)
 
-\subsection{Free-Form Visualization}
+\subsection{Free-form Visualization}
 
-In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
+% In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
 
-- _Have you visualized a relevant or important quality about the problem, dataset, input data, or results?_
-- _Is the visualization thoroughly analyzed and discussed?_
-- _If a plot is provided, are the axes, title, and datum clearly defined?_
+% - Have you visualized a relevant or important quality about the problem, dataset, input data, or results?
+% - Is the visualization thoroughly analyzed and discussed?
+% - If a plot is provided, are the axes, title, and datum clearly defined?
+
+\paragraph{}
+The comparison between ground truth and predictions w.r.t.\ the linear model as a benchmark, and two LSTM based solution models discussed in Subsection~\ref{sec:refinement}, are shown in Figure~\ref{fig:pred0},\ \ref{fig:pred1}, and\ \ref{fig:pred2}.
+
+\begin{enumerate}
+    \item The benchmark model performs poorly when price change rapidly, as the orange curve diverges from the blue curve at peaks and troughs.
+    \item Solution I shows a lower variance than the linear model, but also a high bias in the testing dataset; and
+    \item Solution II produces an unbiased and efficient estimation on the entire dataset, as the blue curve is almost perfectly covered by orange.
+\end{enumerate}
+
+\begin{figure}
+    \centering
+    \includegraphics{figures/pred_linear.png}
+    \caption{Prediction of Benchmark}%
+    \label{fig:pred0}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics{figures/pred_lstm.png}
+    \caption{Prediction of Solution I}%
+    \label{fig:pred1}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics{figures/pred_lstmratio.png}
+    \caption{Prediction of Solution II}%
+    \label{fig:pred2}
+\end{figure}
 
 \subsection{Reflection}
 
-In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
+\paragraph{}
+In this study, an LSTM-based predictor was built to estimate VWAP of Bitcoin futures contract using history trading data. The model does not estimate VWAP itself, but the logarithm of VWAP change. Empirically, the RMSD between estimated and real VWAP on the test data is 5.53, which significantly overperforms the benchmark model, whose RMSD is 125.28.
 
-- _Have you thoroughly summarized the entire process you used for this project?_
-- _Were there any interesting aspects of the project?_
-- _Were there any difficult aspects of the project?_
-- _Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?_
+\paragraph{}
+However, even though the estimated price almost overlaps with the real price on Figure~\ref{fig:pred2}, further analysis is required to conclude whether this predictor is precise enough to serve as a trading agent that beats the market.
+
+% In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
+
+% - Have you thoroughly summarized the entire process you used for this project?
+% - Were there any interesting aspects of the project?
+% - Were there any difficult aspects of the project?
+% - Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?
 
 \subsection{Improvement}
 
-In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
+\paragraph{}
+The trading data in financial markets is infamous to have a bad signal-noise-ratio. More data sources outside the market, such as Google Index of the keyword ``Bitcoin'', sentiment analysis of the Bitcoin channel on Reddit, could significantly improve the solution of this study.
 
-- _Are there further improvements that could be made on the algorithms or techniques you used in this project?_
-- _Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?_
-- _If you used your final solution as the new benchmark, do you think an even better solution exists?_
+\paragraph{}
+Moreover, a price predictor could be ensembled with a trading policy and yields a trading agent. The trading policy could be some simple rules or a complex mathematical model. Otherwise, a reinforcement learning model is also possible to serve as a trading agent.
 
----
+% In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
 
-**Before submitting, ask yourself. . .**
+% - Are there further improvements that could be made on the algorithms or techniques you used in this project?
+% - Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?
+% - If you used your final solution as the new benchmark, do you think an even better solution exists?
+
+\end{document}
+
+Before submitting, ask yourself
 
 - Does the project report you’ve written follow a well-organized structure similar to that of the project template?
 - Is each section (particularly **Analysis** and **Methodology**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
@@ -258,4 +354,4 @@ In this section, you will need to provide discussion as to how one aspect of the
 - Is the code that implements your solution easily readable and properly commented?
 - Does the code execute without error and produce results similar to those reported?
 
-[^bigiotti]: Bigiotti, Alessandro; Navarra, Alfredo (October 19, 2018), "Optimizing Automated Trading Systems", Advances in Intelligent Systems and Computing, Springer International Publishing, pp. 254–261, doi:10.1007/978-3-030-02351-5_30, ISBN 978-3-030-02350-8
+% [^bigiotti]: Bigiotti, Alessandro; Navarra, Alfredo (October 19, 2018), "Optimizing Automated Trading Systems", Advances in Intelligent Systems and Computing, Springer International Publishing, pp. 254–261, doi:10.1007/978-3-030-02351-5_30, ISBN 978-3-030-02350-8

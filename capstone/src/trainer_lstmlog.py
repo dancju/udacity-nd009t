@@ -1,5 +1,6 @@
 import argparse
 import os
+import pickle
 import time
 
 import pandas as pd
@@ -58,16 +59,18 @@ def train(
     def _load_data(dataset: str):
         x = _read_csv(dataset + "_x.csv")
         y = _read_csv(dataset + "_y.csv")
-        vwap_next = y.vwap
+        vl_this = x.vwap_log
+        vl_diff = y.vwap_log_diff
         return (
             torch.tensor(x.to_numpy(), device=device),
-            torch.tensor(vwap_next.to_numpy(), device=device),
+            torch.tensor(vl_diff.to_numpy(), device=device),
+            vl_this,
             y.index,
         )
 
-    trai_x, trai_next, trai_idx = _load_data("trai")
-    vali_x, vali_next, vali_idx = _load_data("vali")
-    test_x, test_next, test_idx = _load_data("test")
+    trai_x, trai_vl_diff, trai_vl_this, trai_idx = _load_data("trai")
+    vali_x, vali_vl_diff, vali_vl_this, vali_idx = _load_data("vali")
+    test_x, test_vl_diff, test_vl_this, test_idx = _load_data("test")
 
     parameters = {
         "n_features": trai_x.shape[1],
@@ -95,7 +98,7 @@ def train(
         for i in range(0, trai_x.shape[0], batch_size):
             optimizer.zero_grad()
             pred, state = model(trai_x[i : i + batch_size], state)
-            loss = loss_fn(pred.squeeze(), trai_next[i : i + batch_size])
+            loss = loss_fn(pred.squeeze(), trai_vl_diff[i : i + batch_size])
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
@@ -104,7 +107,7 @@ def train(
             valid_loss = 0
             for i in range(0, vali_x.shape[0], batch_size):
                 pred, state = model(vali_x[i : i + batch_size], state)
-                loss = loss_fn(pred.squeeze(), vali_next[i : i + batch_size])
+                loss = loss_fn(pred.squeeze(), vali_vl_diff[i : i + batch_size])
                 valid_loss += loss.item()
         # step
         train_loss = train_loss / trai_x.shape[0]
@@ -117,21 +120,35 @@ def train(
         scheduler.step()
 
     # evaluating
+    scaler = pickle.load(open(os.path.join(input_dir, "scaler.pkl"), "rb"))
 
-    def _evaluate(x, vwap_trut, idx, dataset, state):
+    def _transformer(scaler):
+        return lambda x: (x - scaler.mean_) / scaler.std_
+
+    def _inverse_transformer(scaler):
+        return lambda y: y * scaler.std_ + scaler.mean_
+
+    def _evaluate(x, vl_this, idx, dataset, state):
         with torch.no_grad():
-            pred, state = model(x, state)
-        pred = pd.Series(pred.squeeze().cpu(), index=idx)
-        pred.to_csv(os.path.join(output_dir, f"pred_{dataset}_lstm.csv"), header=True)
+            vl_diff, state = model(x, state)
+        vl_diff = pd.Series(vl_diff.squeeze().cpu(), index=idx)
+        vl_diff = vl_diff.apply(_inverse_transformer(scaler.loc["vwap_log_diff"]))
+        vl_this = vl_this.apply(_inverse_transformer(scaler.loc["vwap_log"]))
+        pred = vl_this + vl_diff
+        pred = pred.apply(pd.np.exp)
+        pred = pred.apply(_transformer(scaler.loc["vwap"]))
+        pred.to_csv(
+            os.path.join(output_dir, f"pred_{dataset}_lstmlog.csv"), header=True
+        )
         return state
 
     state = (
         torch.zeros([lstm_layers, 1, hidden_dim], device=device),
         torch.zeros([lstm_layers, 1, hidden_dim], device=device),
     )
-    state = _evaluate(trai_x, trai_next, trai_idx, "trai", state)
-    state = _evaluate(vali_x, vali_next, vali_idx, "vali", state)
-    state = _evaluate(test_x, test_next, test_idx, "test", state)
+    state = _evaluate(trai_x, trai_vl_this, trai_idx, "trai", state)
+    state = _evaluate(vali_x, vali_vl_this, vali_idx, "vali", state)
+    state = _evaluate(test_x, test_vl_this, test_idx, "test", state)
     torch.save(
         {"parameters": parameters, "state_dict": model.cpu().state_dict()},
         os.path.join(model_dir, "lstm.pth"),

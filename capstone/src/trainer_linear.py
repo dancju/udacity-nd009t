@@ -35,17 +35,26 @@ def train(
     print(f"Using device {device}.")
 
     def _read_csv(filename: str) -> torch.Tensor:
-        df = pd.read_csv(
-            os.path.join(input_dir, filename), index_col="timestamp", parse_dates=True,
+        return pd.read_csv(
+            os.path.join(input_dir, filename),
+            dtype=pd.np.float32,
+            index_col="timestamp",
+            parse_dates=True,
         )
-        return torch.tensor(df.to_numpy(), dtype=torch.float, device=device,), df.index
 
-    trai_x, trai_x_i = _read_csv("trai_x.csv")
-    trai_y, trai_y_i = _read_csv("trai_y.csv")
-    vali_x, vali_x_i = _read_csv("vali_x.csv")
-    vali_y, vali_y_i = _read_csv("vali_y.csv")
-    test_x, test_x_i = _read_csv("test_x.csv")
-    test_y, test_y_i = _read_csv("test_y.csv")
+    def _load_data(dataset: str):
+        x = _read_csv(dataset + "_x.csv")
+        y = _read_csv(dataset + "_y.csv")
+        vwap_next = y.vwap
+        return (
+            torch.tensor(x.to_numpy(), device=device),
+            torch.tensor(vwap_next.to_numpy(), device=device),
+            y.index,
+        )
+
+    trai_x, trai_next, trai_idx = _load_data("trai")
+    vali_x, vali_next, vali_idx = _load_data("vali")
+    test_x, test_next, test_idx = _load_data("test")
 
     parameters = {
         "n_features": trai_x.shape[1],
@@ -67,7 +76,7 @@ def train(
         for i in range(0, trai_x.shape[0], batch_size):
             optimizer.zero_grad()
             pred = model(trai_x[i : i + batch_size])
-            loss = loss_fn(pred, trai_y[i : i + batch_size])
+            loss = loss_fn(pred.squeeze(), trai_next[i : i + batch_size])
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
@@ -76,7 +85,7 @@ def train(
             valid_loss = 0
             for i in range(0, vali_x.shape[0], batch_size):
                 pred = model(vali_x[i : i + batch_size])
-                loss = loss_fn(pred, vali_y[i : i + batch_size])
+                loss = loss_fn(pred.squeeze(), vali_next[i : i + batch_size])
                 valid_loss += loss.item()
         # step
         train_loss = train_loss / trai_x.shape[0]
@@ -90,20 +99,15 @@ def train(
 
     # evaluating
 
-    def _evaluate(x, y, index, dataset):
-        loss_fn = torch.nn.MSELoss(reduction="none")
+    def _evaluate(x, vwap_trut, idx, dataset):
         with torch.no_grad():
             pred = model(x)
-            loss = loss_fn(pred, y).numpy()
-            pred = pd.Series(pred.squeeze(), index=index)
-            loss = pd.Series(loss.squeeze(), index=index)
+        pred = pd.Series(pred.squeeze().cpu(), index=idx)
         pred.to_csv(os.path.join(output_dir, f"pred_{dataset}_linear.csv"), header=True)
-        loss.to_csv(os.path.join(output_dir, f"loss_{dataset}_linear.csv"), header=True)
-        print(f"loss of {dataset} is {loss.mean():.3e}")
 
-    _evaluate(trai_x, trai_y, trai_y_i, "trai")
-    _evaluate(vali_x, vali_y, vali_y_i, "vali")
-    _evaluate(test_x, test_y, test_y_i, "test")
+    _evaluate(trai_x, trai_next, trai_idx, "trai")
+    _evaluate(vali_x, vali_next, vali_idx, "vali")
+    _evaluate(test_x, test_next, test_idx, "test")
     torch.save(
         {"parameters": parameters, "state_dict": model.cpu().state_dict()},
         os.path.join(model_dir, "linear.pth"),

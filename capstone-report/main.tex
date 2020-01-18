@@ -1,5 +1,4 @@
 \documentclass[12pt, letterpaper]{article}
-
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -38,7 +37,7 @@ In this study, a price predictor based on LSTM will be built.
 The root-mean-square deviation (RMSD) between labels \(y\) and predictions \(\hat y\) will be used to evaluate the performance of both of the benchmark model and the solution model. RMSD is defined as follows,
 
 \begin{align*}
-    \mathrm{MSE}(y,\hat y)&:=\frac{1}{N}\sum_i(y_i-\hat y_i)^2, \\
+    \mathrm{MSE}(y,\hat y)&:=\frac{1}{N}\sum_i{(y_i-\hat y_i)}^2, \\
     \mathrm{RMSD}(y,\hat y)&:=\sqrt{\mathrm{MSE}(y,\hat y)}.
 \end{align*}
 
@@ -56,7 +55,7 @@ For each time step \(t\), the label \(y_t\) is defined as the VWAP of the next t
 In this study, trading data of BitMEX's XBTZ19 contract, which is a Bitcoin futures contract being traded around the clock from 16 June to 27 December 2019, will be used to train and test the predictor. The dataset could be fetched from BitMEX's official API without charge of fee.\footnote{The API concerned with the desired data is documented at \url{https://www.bitmex.com/api/explorer/\#!/Trade/Trade_getBucketed}}
 
 \paragraph{}
-The dataset is a table that each row indicates one minute and each column indicates a specific data described as Table~\ref{table:column-header}. Note that \texttt{open} is not defined as the price of the first trade in the specific time step, which is an unconventional definition and does not apply to other data sources.
+The dataset is a table that each row indicates one minute and each column indicates a specific data as described in Table~\ref{table:column-header}. Note that \texttt{open} is not defined as the price of the first trade in the specific time step, which is an unconventional definition and does not apply to other data sources.
 
 \begin{table}
     \centering
@@ -82,7 +81,7 @@ The dataset is formulated as \( \{x_t|t=1,2,\dots,T\} \), where \(x_t\) is a vec
 
 \begin{table}
     \resizebox{\textwidth}{!}{
-    \begin{tabular}{l|*8r}
+    \begin{tabular}{l*8r}
         \toprule
         & open & high & low & close & vwap & foreignNotional & homeNotional & trades \\
         \midrule
@@ -111,7 +110,7 @@ The dataset is formulated as \( \{x_t|t=1,2,\dots,T\} \), where \(x_t\) is a vec
 
 \begin{table}
     \resizebox{\textwidth}{!}{
-    \begin{tabular}{l|*8r}
+    \begin{tabular}{l*8r}
         \toprule
         & open & high & low & close & vwap & foreignNotional & homeNotional & trades \\
         \midrule
@@ -142,6 +141,16 @@ The VWAP and volume of the dataset are shown in Figure~\ref{fig:dataset}.
 \end{figure}
 
 \subsection{Algorithms and Techniques}
+% TODO
+
+% Are the algorithms you will use, including any default variables/parameters in the project clearly defined?
+% Are the techniques to be used thoroughly discussed and justified?
+% Is it made clear how the input data or datasets will be handled by the algorithms and techniques chosen?
+
+% In this section, you should focus on describing how your algorithms work, in terms of how they train and predict. What's the procedure behind the scenes? What's the theory behind it? This discussion doesn't have to be mathematically rigorous, unless that suits you better; essentially, however you can best explain these concepts, this is how you should approach it
+% As an example, if you were describing the SVM, you might discuss such concepts as 'maximizing the margin' and the 'kernel trick'
+% The purpose of taking this theoretical perspective is that it helps your reader to understand how it's treating the data, and therefore gives more objective reasoning for why it may be optimal in this situation
+% It also clearly demonstrates that you have the fundamental mathematical understanding of machine learning algorithms that would be expected of an engineer, and this will help your portfolio
 
 \paragraph{}
 The solution model consists of one LSTM layer and one linear layer. The LSTM layer is formally formulated as follows:
@@ -192,11 +201,11 @@ Data preprocessing steps are listed as follows.
     \centering
     \begin{tabular}{lrr}
         \toprule
-                   &        from &          to \\
+                   &         from &           to \\
         \midrule
-        training   & 2019 Jun 14 & 2019 Oct 09 \\
-        validation & 2019 Oct 10 & 2019 Nov 17 \\
-        testing    & 2019 Nov 18 & 2019 Dec 27 \\
+        training   & 2019--06--14 & 2019--10--09 \\
+        validation & 2019--10--10 & 2019--11--17 \\
+        testing    & 2019--11--18 & 2019--12--27 \\
         \bottomrule
     \end{tabular}
     \caption{Dataset splitting}%
@@ -204,6 +213,14 @@ Data preprocessing steps are listed as follows.
 \end{table}
 
 \subsection{Implementation}
+% TODO
+
+% Is it made clear how the algorithms and techniques were implemented with the given datasets or input data?
+% Were there any complications with the original metrics or techniques that required changing prior to acquiring a solution?
+% Was there any part of the coding process (e.g., writing complicated functions) that should be documented?
+
+% The goal of this section is to make our work as reproducible as possible; for any future researchers that read your work and wish to expand on it, they'll have to start by re-implementing what you have done, and they can only do that if your explanation of your work through this report is detailed and accurate. So more of a step by step walkthrough of the process of building these models should be prepared, with this perspective in mind. Would someone reading your work be able to replicate it?
+% In addition, one of the main ways we help with reproduciblity is by clearly documenting the challenges we faced, and how we overcame them. This helps out those that are following our work not to get stuck on the things that we got stuck on. If you can include some discussion of any coding complications you faced in this process, and how you overcame these, that will round out this section nicely. If nothing particularly difficult happened and it was straightforward, discuss why this was the case.
 
 \paragraph{}
 Loss function and the LSTM model could be implemented with PyTorch's builtin \texttt{torch.nn.MSELoss} class and \texttt{torch.nn.LSTM} class.
@@ -240,12 +257,14 @@ In the following sections, these two solutions described above will be named Sol
 Since the dataset, containing 282452 minutes/rows, is big enough, and the test data was not used to train or tune the model, it could be concluded that the model is robust enough to estimate unseen data.
 
 \subsection{Justification}
+% TODO
 
-% In this section, your model’s final solution and its results should be compared to the benchmark you established earlier in the project using some type of statistical analysis. You should also justify whether these results and the solution are significant enough to have solved the problem posed in the project. Questions to ask yourself when writing this section:
+% Are the final results found stronger than the benchmark result reported earlier?
+% Have you thoroughly analyzed and discussed the final solution?
+% Is the final solution significant enough to have solved the problem?
 
-% - Are the final results found stronger than the benchmark result reported earlier?
-% - Have you thoroughly analyzed and discussed the final solution?
-% - Is the final solution significant enough to have solved the problem?
+% Your final results are presented in a way that's easy to analyze and compare, with good surrounding discussion
+% Another important aspect of this section is discussing robustness. Does your model generalize well to unseen data? Is it sensitive to small changes in the data, or to outliers? Essentially, can we trust this model, and why or why not? You should attempt to answer this question in the most objective way you can, ideally with some well formed tests.
 
 \paragraph{}
 The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{table:loss}, which illustrates that the final solution (Solution II) overperforms the benchmark significantly on the entire dataset.
@@ -273,21 +292,10 @@ The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{
     \label{table:loss}
 \end{table}
 
-\section{Conclusion} % (approx. 1-2 pages)
-
-\subsection{Free-form Visualization}
-
-% In this section, you will need to provide some form of visualization that emphasizes an important quality about the project. It is much more free-form, but should reasonably support a significant result or characteristic about the problem that you want to discuss. Questions to ask yourself when writing this section:
-
-% - Have you visualized a relevant or important quality about the problem, dataset, input data, or results?
-% - Is the visualization thoroughly analyzed and discussed?
-% - If a plot is provided, are the axes, title, and datum clearly defined?
-
-\paragraph{}
-The comparison between ground truth and predictions w.r.t.\ the linear model as a benchmark, and two LSTM based solution models discussed in Subsection~\ref{sec:refinement}, are shown in Figure~\ref{fig:pred0},\ \ref{fig:pred1}, and\ \ref{fig:pred2}.
+The comparison between ground truth and predictions w.r.t.\ the linear model as a benchmark and two LSTM based solution models discussed in Subsection~\ref{sec:refinement}, are shown in Figure~\ref{fig:pred0},\ \ref{fig:pred1}, and\ \ref{fig:pred2}. Based on these three figures we can conclude that
 
 \begin{enumerate}
-    \item The benchmark model performs poorly when price change rapidly, as the orange curve diverges from the blue curve at peaks and troughs.
+    \item The benchmark model performs poorly when price change rapidly, as the orange curve diverges from the blue curve at peaks and troughs;
     \item Solution I shows a lower variance than the linear model, but also a high bias in the testing dataset; and
     \item Solution II produces an unbiased and efficient estimation on the entire dataset, as the blue curve is almost perfectly covered by orange.
 \end{enumerate}
@@ -313,34 +321,21 @@ The comparison between ground truth and predictions w.r.t.\ the linear model as 
     \label{fig:pred2}
 \end{figure}
 
-\subsection{Reflection}
+% \subsection{Reflection}
 
-\paragraph{}
-In this study, an LSTM-based predictor was built to estimate VWAP of Bitcoin futures contract using history trading data. The model does not estimate VWAP itself, but the logarithm of VWAP change. Empirically, the RMSD between estimated and real VWAP on the test data is 5.53, which significantly overperforms the benchmark model, whose RMSD is 125.28.
+% \paragraph{}
+% In this study, an LSTM-based predictor was built to estimate VWAP of Bitcoin futures contract using history trading data. The model does not estimate VWAP itself, but the logarithm of VWAP change. Empirically, the RMSD between estimated and real VWAP on the test data is 5.53, which significantly overperforms the benchmark model, whose RMSD is 125.28.
 
-\paragraph{}
-However, even though the estimated price almost overlaps with the real price on Figure~\ref{fig:pred2}, further analysis is required to conclude whether this predictor is precise enough to serve as a trading agent that beats the market.
+% \paragraph{}
+% However, even though the estimated price almost overlaps with the real price on Figure~\ref{fig:pred2}, further analysis is required to conclude whether this predictor is precise enough to serve as a trading agent that beats the market.
 
-% In this section, you will summarize the entire end-to-end problem solution and discuss one or two particular aspects of the project you found interesting or difficult. You are expected to reflect on the project as a whole to show that you have a firm understanding of the entire process employed in your work. Questions to ask yourself when writing this section:
+% \subsection{Improvement}
 
-% - Have you thoroughly summarized the entire process you used for this project?
-% - Were there any interesting aspects of the project?
-% - Were there any difficult aspects of the project?
-% - Does the final model and solution fit your expectations for the problem, and should it be used in a general setting to solve these types of problems?
+% \paragraph{}
+% The trading data in financial markets is infamous to have a bad signal-noise-ratio. More data sources outside the market, such as Google Index of the keyword ``Bitcoin'', sentiment analysis of the Bitcoin channel on Reddit, could significantly improve the solution of this study.
 
-\subsection{Improvement}
-
-\paragraph{}
-The trading data in financial markets is infamous to have a bad signal-noise-ratio. More data sources outside the market, such as Google Index of the keyword ``Bitcoin'', sentiment analysis of the Bitcoin channel on Reddit, could significantly improve the solution of this study.
-
-\paragraph{}
-Moreover, a price predictor could be ensembled with a trading policy and yields a trading agent. The trading policy could be some simple rules or a complex mathematical model. Otherwise, a reinforcement learning model is also possible to serve as a trading agent.
-
-% In this section, you will need to provide discussion as to how one aspect of the implementation you designed could be improved. As an example, consider ways your implementation can be made more general, and what would need to be modified. You do not need to make this improvement, but the potential solutions resulting from these changes are considered and compared/contrasted to your current solution. Questions to ask yourself when writing this section:
-
-% - Are there further improvements that could be made on the algorithms or techniques you used in this project?
-% - Were there algorithms or techniques you researched that you did not know how to implement, but would consider using if you knew how?
-% - If you used your final solution as the new benchmark, do you think an even better solution exists?
+% \paragraph{}
+% Moreover, a price predictor could be ensembled with a trading policy and yields a trading agent. The trading policy could be some simple rules or a complex mathematical model. Otherwise, a reinforcement learning model is also possible to serve as a trading agent.
 
 \end{document}
 
@@ -353,5 +348,3 @@ Before submitting, ask yourself
 - Are all the resources used for this project correctly cited and referenced?
 - Is the code that implements your solution easily readable and properly commented?
 - Does the code execute without error and produce results similar to those reported?
-
-% [^bigiotti]: Bigiotti, Alessandro; Navarra, Alfredo (October 19, 2018), "Optimizing Automated Trading Systems", Advances in Intelligent Systems and Computing, Springer International Publishing, pp. 254–261, doi:10.1007/978-3-030-02351-5_30, ISBN 978-3-030-02350-8

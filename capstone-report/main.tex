@@ -1,4 +1,5 @@
 \documentclass[12pt, letterpaper]{article}
+\usepackage[vlined]{algorithm2e}
 \usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -37,8 +38,8 @@ In this study, a price predictor based on LSTM will be built.
 The root-mean-square deviation (RMSD) between labels \(y\) and predictions \(\hat y\) will be used to evaluate the performance of both of the benchmark model and the solution model. RMSD is defined as follows,
 
 \begin{align*}
-    \mathrm{MSE}(y,\hat y)&:=\frac{1}{N}\sum_i{(y_i-\hat y_i)}^2, \\
-    \mathrm{RMSD}(y,\hat y)&:=\sqrt{\mathrm{MSE}(y,\hat y)}.
+    \mathrm{MSE}(y,\hat y) & :=\frac{1}{N}\sum_i{(y_i-\hat y_i)}^2, \\
+    \mathrm{RMSD}(y,\hat y) & :=\sqrt{\mathrm{MSE}(y,\hat y)}.
 \end{align*}
 
 For each time step \(t\), the label \(y_t\) is defined as the VWAP of the next time step,
@@ -141,16 +142,6 @@ The VWAP and volume of the dataset are shown in Figure~\ref{fig:dataset}.
 \end{figure}
 
 \subsection{Algorithms and Techniques}
-% TODO
-
-% Are the algorithms you will use, including any default variables/parameters in the project clearly defined?
-% Are the techniques to be used thoroughly discussed and justified?
-% Is it made clear how the input data or datasets will be handled by the algorithms and techniques chosen?
-
-% In this section, you should focus on describing how your algorithms work, in terms of how they train and predict. What's the procedure behind the scenes? What's the theory behind it? This discussion doesn't have to be mathematically rigorous, unless that suits you better; essentially, however you can best explain these concepts, this is how you should approach it
-% As an example, if you were describing the SVM, you might discuss such concepts as 'maximizing the margin' and the 'kernel trick'
-% The purpose of taking this theoretical perspective is that it helps your reader to understand how it's treating the data, and therefore gives more objective reasoning for why it may be optimal in this situation
-% It also clearly demonstrates that you have the fundamental mathematical understanding of machine learning algorithms that would be expected of an engineer, and this will help your portfolio
 
 \paragraph{}
 The solution model consists of one LSTM layer and one linear layer. The LSTM layer is formally formulated as follows:
@@ -166,14 +157,25 @@ The solution model consists of one LSTM layer and one linear layer. The LSTM lay
 
 where \(h_t\) is the hidden state at time \(t\), \(c_t\) is the cell state at time \(t\), \(x_t\) is the input at time \(t\), and \(i_t\), \(f_t\), \(g_t\), \(o_t\) are the input, forget, cell, and output gates, respectively. \(\sigma \) is the sigmoid function, and \(*\) is the Hadamard product.
 
+\paragraph{}
+Moreover, the tunable parameters are listed as follows:
+
+\begin{enumerate}
+    \item \texttt{hidden\_dim}\quad the number of dimension of the hidden layer between the LSTM and the linear network;
+    \item \texttt{dropout}\quad the dropout regularisation parameter for the LSTM network;
+    \item \texttt{lr}\quad the learning rate;
+    \item \texttt{batch\_size}\quad the number of rows for each batch; and
+    \item \texttt{n\_epochs}\quad the number of epochs.
+\end{enumerate}
+
 \subsection{Benchmark}
 
 \paragraph{}
 The benchmark model consists of two linear regression layers:
 
 \begin{align*}
-    h&=\mathrm{ReLU}\left(xA_1+b_1\right), \\
-    \hat y&=hA_2+b_2.
+    h & =\mathrm{ReLU}\left(xA_1+b_1\right), \\
+    \hat y & =hA_2+b_2.
 \end{align*}
 
 \section{Methodology} % (approx. 3-5 pages)
@@ -183,19 +185,15 @@ The benchmark model consists of two linear regression layers:
 \paragraph{}
 Data preprocessing steps are listed as follows.
 
-\paragraph{Crawling} Since new data are generating every minute before the futures expires, new rows could be fetched from the data source. The crawler should be able to handle locally cached data and progressively persisting new data.
-
-\paragraph{Column dropping} Columns \texttt{open} and \texttt{volume} do not provide new information to the rest part and are consequently dropped.
-
-\paragraph{Null filling} For time steps that do not contain any trades, the corresponding \texttt{vwap} columns are null. These items will be propagated with last valid observation.
-
-\paragraph{Feature engineering} Moving average convergence/divergence (MACD) with the short period of 12 and the long period of 26, and relative strength index (RSI) with the timeframe of 14, are calculated and appended as extra columns for consequent processing.
-
-\paragraph{Normalisation} All features will be normalised.
-
-\paragraph{Labelling} Each row will be labelled a learning target. The learning target has different definitions in the initial and final solution, which will be illustrated in Subsection~\ref{sec:refinement}.
-
-\paragraph{Splitting} The entire dataset will be split without shuffling into three consecutive parts for training, validation, and testing, while the lengths proportionate to 6:2:2. Individually, their ranges are listed in Table~\ref{table:split}.
+\begin{enumerate}
+    \item \textbf{Crawling} Since new data are generating every minute before the futures expires, new rows could be fetched from the data source. The crawler should be able to handle locally cached data and progressively persisting new data.
+    \item \textbf{Column dropping} Columns \texttt{open} and \texttt{volume} do not provide new information to the rest part and are consequently dropped.
+    \item \textbf{Null filling} For time steps that do not contain any trades, the corresponding \texttt{vwap} columns are null. These items will be propagated with last valid observations.
+    \item \textbf{Feature engineering} Moving average convergence/divergence (MACD) with the short period of 12 and the long period of 26, and relative strength index (RSI) with the timeframe of 14, are calculated and appended as extra columns for consequent processing.
+    \item \textbf{Normalisation} All features will be normalised.
+    \item \textbf{Labelling} Each row will be labelled a learning target. The learning target has different definitions in the initial and final solution, which will be illustrated in Subsection~\ref{sec:refinement}.
+    \item \textbf{Splitting} The entire dataset will be split without shuffling into three consecutive parts for training, validation, and testing, while the lengths proportionate to 6:2:2. Individually, their ranges are listed in Table~\ref{table:split}.
+\end{enumerate}
 
 \begin{table}
     \centering
@@ -213,17 +211,29 @@ Data preprocessing steps are listed as follows.
 \end{table}
 
 \subsection{Implementation}
-% TODO
-
-% Is it made clear how the algorithms and techniques were implemented with the given datasets or input data?
-% Were there any complications with the original metrics or techniques that required changing prior to acquiring a solution?
-% Was there any part of the coding process (e.g., writing complicated functions) that should be documented?
-
-% The goal of this section is to make our work as reproducible as possible; for any future researchers that read your work and wish to expand on it, they'll have to start by re-implementing what you have done, and they can only do that if your explanation of your work through this report is detailed and accurate. So more of a step by step walkthrough of the process of building these models should be prepared, with this perspective in mind. Would someone reading your work be able to replicate it?
-% In addition, one of the main ways we help with reproduciblity is by clearly documenting the challenges we faced, and how we overcame them. This helps out those that are following our work not to get stuck on the things that we got stuck on. If you can include some discussion of any coding complications you faced in this process, and how you overcame these, that will round out this section nicely. If nothing particularly difficult happened and it was straightforward, discuss why this was the case.
 
 \paragraph{}
-Loss function and the LSTM model could be implemented with PyTorch's builtin \texttt{torch.nn.MSELoss} class and \texttt{torch.nn.LSTM} class.
+The LSTM model was implemented with PyTorch's builtin \texttt{torch.nn.LSTM} class. Besides, the training steps are listed as follows.
+
+\begin{algorithm}
+    load preprocessed training and validation data into CUDA device\;
+    load parameters\;
+    initialise model\;
+    initialise loss function \texttt{torch.nn.MSELoss}\;
+    initialise optimiser \texttt{torch.optim.Adam}\;
+    initialise scheduler \texttt{torch.optim.lr\_scheduler.StepLR}\;
+    \ForEach{epoch}{
+        split training data into batchs\;
+        initialise hidden states and cell states with zero vectors\;
+        \ForEach{training batch}{
+            clear all gradients\;
+            execute forward propagation, get estimator, and update hidden/cell states\;
+            get loss value from the estimator\;
+            execute backpropagation and update the model\;
+        }
+        get loss value of the validation data\;
+    }
+\end{algorithm}
 
 \subsection{Refinement}\label{sec:refinement}
 
@@ -240,8 +250,8 @@ where \(f(\cdot)\) is the LSTM model and \(\varepsilon_n\) is the residual. Howe
 In the final solution, the learning target is defined as the difference of the logarithm of the VWAP between this time step and the next, i.e.
 
 \begin{align*}
-    f(x_t)&=\log(\mathtt{vwap}_{t+1})-\log(\mathtt{vwap}_t)+\varepsilon_t, \\
-    \hat y_t&=\mathtt{vwap}_t\exp(f(x_t))=\mathtt{vwap}_{t+1}\exp(\varepsilon_t).
+    f(x_t) & =\log(\mathtt{vwap}_{t+1})-\log(\mathtt{vwap}_t)+\varepsilon_t, \\
+    \hat y_t & =\mathtt{vwap}_t\exp(f(x_t))=\mathtt{vwap}_{t+1}\exp(\varepsilon_t).
 \end{align*}
 
 Even though the estimation \(\hat y\) is more vulnerable to a higher residual than the former solution, both bias and variance are reduced in the experiment results.
@@ -257,14 +267,6 @@ In the following sections, these two solutions described above will be named Sol
 Since the dataset, containing 282452 minutes/rows, is big enough, and the test data was not used to train or tune the model, it could be concluded that the model is robust enough to estimate unseen data.
 
 \subsection{Justification}
-% TODO
-
-% Are the final results found stronger than the benchmark result reported earlier?
-% Have you thoroughly analyzed and discussed the final solution?
-% Is the final solution significant enough to have solved the problem?
-
-% Your final results are presented in a way that's easy to analyze and compare, with good surrounding discussion
-% Another important aspect of this section is discussing robustness. Does your model generalize well to unseen data? Is it sensitive to small changes in the data, or to outliers? Essentially, can we trust this model, and why or why not? You should attempt to answer this question in the most objective way you can, ideally with some well formed tests.
 
 \paragraph{}
 The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{table:loss}, which illustrates that the final solution (Solution II) overperforms the benchmark significantly on the entire dataset.
@@ -273,7 +275,7 @@ The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{
     \centering
     \begin{tabular}{llr}
         \toprule
-        Model     & Dataset &  RMSD \\
+        Model       & Dataset    &   RMSD \\
         \midrule
                     & training   & 209.53 \\
         Benchmark   & validation & 107.05 \\
@@ -292,6 +294,7 @@ The RMSD losses of three models w.r.t.\ three datasets are listed in Table~\ref{
     \label{table:loss}
 \end{table}
 
+\paragraph{}
 The comparison between ground truth and predictions w.r.t.\ the linear model as a benchmark and two LSTM based solution models discussed in Subsection~\ref{sec:refinement}, are shown in Figure~\ref{fig:pred0},\ \ref{fig:pred1}, and\ \ref{fig:pred2}. Based on these three figures we can conclude that
 
 \begin{enumerate}
@@ -321,30 +324,22 @@ The comparison between ground truth and predictions w.r.t.\ the linear model as 
     \label{fig:pred2}
 \end{figure}
 
-% \subsection{Reflection}
+\section{Conclusion}
 
-% \paragraph{}
-% In this study, an LSTM-based predictor was built to estimate VWAP of Bitcoin futures contract using history trading data. The model does not estimate VWAP itself, but the logarithm of VWAP change. Empirically, the RMSD between estimated and real VWAP on the test data is 5.53, which significantly overperforms the benchmark model, whose RMSD is 125.28.
+\subsection{Reflection}
 
-% \paragraph{}
-% However, even though the estimated price almost overlaps with the real price on Figure~\ref{fig:pred2}, further analysis is required to conclude whether this predictor is precise enough to serve as a trading agent that beats the market.
+\paragraph{}
+In this study, an LSTM-based predictor was built to estimate VWAP of Bitcoin futures contract using history trading data. The model does not estimate VWAP itself, but the logarithm of VWAP change. Empirically, the RMSD between estimated and real VWAP on the test data is 5.53, which significantly overperforms the benchmark model, whose RMSD is 125.28.
 
-% \subsection{Improvement}
+\paragraph{}
+However, even though the estimated price almost overlaps with the real price on Figure~\ref{fig:pred2}, further analysis is required to conclude whether this predictor is precise enough to serve as a trading agent that beats the market.
 
-% \paragraph{}
-% The trading data in financial markets is infamous to have a bad signal-noise-ratio. More data sources outside the market, such as Google Index of the keyword ``Bitcoin'', sentiment analysis of the Bitcoin channel on Reddit, could significantly improve the solution of this study.
+\subsection{Improvement}
 
-% \paragraph{}
-% Moreover, a price predictor could be ensembled with a trading policy and yields a trading agent. The trading policy could be some simple rules or a complex mathematical model. Otherwise, a reinforcement learning model is also possible to serve as a trading agent.
+\paragraph{}
+The trading data in financial markets is infamous to have a bad signal-noise-ratio. More data sources outside the market, such as Google Index of the keyword ``Bitcoin'', sentiment analysis of the Bitcoin channel on Reddit, could significantly improve the solution of this study.
+
+\paragraph{}
+Moreover, a price predictor could be ensembled with a trading policy and yields a trading agent. The trading policy could be some simple rules or a complex mathematical model. Otherwise, a reinforcement learning model is also possible to serve as a trading agent.
 
 \end{document}
-
-Before submitting, ask yourself
-
-- Does the project report you’ve written follow a well-organized structure similar to that of the project template?
-- Is each section (particularly **Analysis** and **Methodology**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
-- Would the intended audience of your project be able to understand your analysis, methods, and results?
-- Have you properly proof-read your project report to assure there are minimal grammatical and spelling mistakes?
-- Are all the resources used for this project correctly cited and referenced?
-- Is the code that implements your solution easily readable and properly commented?
-- Does the code execute without error and produce results similar to those reported?
